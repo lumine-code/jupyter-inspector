@@ -157,6 +157,29 @@ describe("inspector bundle rendering", () => {
     expect(node.children[0].text).toContain("one");
   });
 
+  it("shows the plain text even when richer types are in the bundle", () => {
+    // IPython 9 pairs the ANSI text/plain with a text/html document carrying
+    // a hardcoded light palette; the plain form follows the theme.
+    const bundles = [];
+    outputRenderer.set({
+      MEDIA_RENDERERS: {},
+      renderRichMedia(bundle) {
+        bundles.push(bundle);
+        return { tag: "div", props: { className: "service-rendered" }, children: [] };
+      },
+    });
+
+    renderBundle({ "text/plain": "p", "text/html": "<h1>Signature</h1>" });
+
+    expect(bundles).toEqual([{ "text/plain": "p" }]);
+  });
+
+  it("strips colour escapes when rendering plain text without the service", () => {
+    const esc = String.fromCharCode(27);
+    const node = renderFallbackBundle({ "text/plain": `${esc}[31mSignature:${esc}[39m np` });
+    expect(node.children[0].text).toBe("Signature: np");
+  });
+
   it("renders through jupyter.output when the service is there", () => {
     const bundles = [];
     outputRenderer.set({

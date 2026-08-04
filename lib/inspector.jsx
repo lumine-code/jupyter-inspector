@@ -8,6 +8,13 @@ const MEDIA_PRIORITY = ["text/html", "text/markdown", "text/plain"];
 const asText = (value) => (Array.isArray(value) ? value.join("") : String(value ?? ""));
 
 function renderBundle(bundle) {
+  // IPython 9 ships the help twice: a text/html document with <h1> section
+  // headings and a hardcoded light pygments palette, and the classic ANSI
+  // text/plain whose colours map to the active theme. Show the plain form
+  // whenever it exists; the rich renderers only ever see bundles without it.
+  if (bundle["text/plain"] != null) {
+    bundle = { "text/plain": bundle["text/plain"] };
+  }
   // jupyter-repl's renderers when they are around: same fidelity as a REPL
   // result, including media types the fallback below cannot show.
   const service = outputRenderer.get();
@@ -42,7 +49,11 @@ function renderFallbackBundle(bundle) {
     });
     return <div className="output-markdown" innerHTML={html} />;
   }
-  return <pre className="output-text">{data}</pre>;
+  // Without jupyter-repl's ANSI renderer the colour escapes would print as
+  // garbage, so they are stripped. Built at runtime because a control
+  // character in a regex literal is a lint error.
+  const escapes = new RegExp(String.fromCharCode(27) + "\[[0-9;]*m", "g");
+  return <pre className="output-text">{data.replace(escapes, "")}</pre>;
 }
 
 function renderMessage(children) {
