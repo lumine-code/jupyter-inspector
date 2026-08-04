@@ -24,7 +24,7 @@ It reads its kernels from [`jupyter-repl`](https://github.com/lumine-code/jupyte
 Commands available in `atom-workspace`:
 
 - `jupyter-inspector:toggle`: open the inspector, or return focus to the editor when it already has it,
-- `jupyter-inspector:inspect-under-cursor`: introspect the expression under the cursor without leaving the editor.
+- `jupyter-inspector:inspect`: introspect the expression under the cursor, revealing the panel when it is hidden.
 
 Commands available in `.jupyter-inspector`:
 

@@ -9,7 +9,7 @@
             { "label": "Toggle Inspector", "command": "jupyter-inspector:toggle" },
             {
               "label": "Inspect Under Cursor",
-              "command": "jupyter-inspector:inspect-under-cursor"
+              "command": "jupyter-inspector:inspect"
             }
           ]
         }
