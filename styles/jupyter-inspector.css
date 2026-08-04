@@ -29,10 +29,6 @@
         min-height: 2.5em;
         max-height: 10em;
         overflow-y: auto;
-
-        .cursor-line {
-          background: transparent;
-        }
       }
     }
   }
