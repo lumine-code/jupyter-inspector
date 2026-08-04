@@ -78,9 +78,38 @@ describe("inspector store", () => {
     expect(code).not.toContain("jupyter-");
   });
 
+  it("asks a Python kernel about a name directly", async () => {
+    const kernel = fakeKernel();
+    store.load(kernel, "np.array");
+    await Promise.resolve();
+
+    // Nothing to evaluate: a dotted name resolves as written, and the answer's
+    // header then carries the real name, not a bound temporary.
+    expect(kernel.executed).toEqual([]);
+    expect(kernel.inspected).toEqual([{ expression: "np.array", cursorPos: 8 }]);
+    expect(store.bundle).toEqual({ "text/plain": "docs" });
+  });
+
+  it("swaps the temporary's name back for the expression", async () => {
+    const kernel = fakeKernel();
+    store.load(kernel, "make()");
+    kernel.inspectResult = {
+      found: true,
+      data: { "text/plain": "Signature: __jupyter_inspector_result_1(x)" },
+    };
+
+    kernel.lastOnResults({ stream: "status", data: "ok" });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const inspectedName = kernel.inspected[0].expression;
+    expect(inspectedName).toMatch(/^__jupyter_inspector_result_\d+$/);
+    expect(store.bundle["text/plain"]).toBe("Signature: make()(x)");
+  });
+
   it("surfaces an execution error instead of a result", () => {
     const kernel = fakeKernel();
-    store.load(kernel, "boom");
+    store.load(kernel, "boom()");
 
     kernel.lastOnResults({
       output_type: "error",
