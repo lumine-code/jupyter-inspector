@@ -167,3 +167,27 @@ describe("inspector panel", () => {
     expect(component.element.querySelector(".text-error").textContent).toBe("No kernel running!");
   });
 });
+
+describe("inspector pane", () => {
+  const InspectorPane = require("../lib/inspector-pane");
+
+  // Losing the kernel service destroys the item directly rather than through
+  // `pane.destroyItem`, and a pane only drops an item that tells it so.
+  it("leaves no tab behind when destroyed directly", async () => {
+    const pane = new InspectorPane(new InspectorStore(), () => {});
+    const workspacePane = atom.workspace.getCenter().getActivePane();
+    workspacePane.addItem(pane);
+
+    expect(workspacePane.getItems()).toContain(pane);
+
+    pane.destroy();
+
+    expect(workspacePane.getItems()).not.toContain(pane);
+  });
+
+  it("survives being destroyed twice", () => {
+    const pane = new InspectorPane(new InspectorStore(), () => {});
+    pane.destroy();
+    expect(() => pane.destroy()).not.toThrow();
+  });
+});
