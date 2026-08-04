@@ -56,6 +56,7 @@ Paste this into your `styles.less` to give the result more room to breathe:
 
 - **jupyter.kernel** (`^1.0.0`): consumed to read the active kernel and ask it to introspect an expression.
 - **autocomplete.watch-editor** (`^1.0.0`): consumed to offer completions in the expression field.
+- **jupyter.output** (`^1.0.0`): consumed to render inspection bundles with jupyter-repl's renderers; a built-in fallback covers html, markdown and plain text.
 
 ## Contributing
 

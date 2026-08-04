@@ -1,5 +1,6 @@
 const etch = require("@lumine-code/etch");
-const { Inspector, renderBundle } = require("../lib/inspector");
+const { Inspector, renderBundle, renderFallbackBundle } = require("../lib/inspector");
+const outputRenderer = require("../lib/output-renderer");
 const { InspectorStore, buildPythonResultInspectorCode } = require("../lib/inspector-store");
 
 // This panel used to live inside jupyter-repl and reach into its store. It now
@@ -106,23 +107,41 @@ describe("inspector store", () => {
 });
 
 describe("inspector bundle rendering", () => {
-  it("prefers html, then markdown, then plain text", () => {
-    expect(renderBundle({ "text/plain": "p", "text/html": "<b>h</b>" }).props.className).toBe(
-      "output-html",
-    );
-    expect(renderBundle({ "text/plain": "p", "text/markdown": "# m" }).props.className).toBe(
-      "markdown",
-    );
-    expect(renderBundle({ "text/plain": "p" }).props.className).toBe("output-text");
+  afterEach(() => outputRenderer.set(null));
+
+  it("prefers html, then markdown, then plain text without the service", () => {
+    expect(
+      renderFallbackBundle({ "text/plain": "p", "text/html": "<b>h</b>" }).props.className,
+    ).toBe("output-html");
+    expect(
+      renderFallbackBundle({ "text/plain": "p", "text/markdown": "# m" }).props.className,
+    ).toBe("output-markdown");
+    expect(renderFallbackBundle({ "text/plain": "p" }).props.className).toBe("output-text");
   });
 
   it("has nothing to show for a bundle it cannot render", () => {
-    expect(renderBundle({ "application/octet-stream": "??" })).toBe(null);
+    expect(renderFallbackBundle({ "application/octet-stream": "??" })).toBe(null);
   });
 
   it("joins the string arrays Jupyter stores multi-line values as", () => {
-    const node = renderBundle({ "text/plain": ["one\n", "two"] });
+    const node = renderFallbackBundle({ "text/plain": ["one\n", "two"] });
     expect(node.children[0].text).toContain("one");
+  });
+
+  it("renders through jupyter.output when the service is there", () => {
+    const bundles = [];
+    outputRenderer.set({
+      MEDIA_RENDERERS: {},
+      renderRichMedia(bundle) {
+        bundles.push(bundle);
+        return { tag: "div", props: { className: "service-rendered" }, children: [] };
+      },
+    });
+
+    const node = renderBundle({ "text/plain": "p" });
+
+    expect(node.props.className).toBe("service-rendered");
+    expect(bundles.length).toBe(1);
   });
 });
 

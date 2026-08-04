@@ -1,5 +1,6 @@
 const etch = require("@lumine-code/etch");
 const { CompositeDisposable } = require("atom");
+const outputRenderer = require("./output-renderer");
 
 /** An inspection bundle only ever carries these three. */
 const MEDIA_PRIORITY = ["text/html", "text/markdown", "text/plain"];
@@ -7,6 +8,17 @@ const MEDIA_PRIORITY = ["text/html", "text/markdown", "text/plain"];
 const asText = (value) => (Array.isArray(value) ? value.join("") : String(value ?? ""));
 
 function renderBundle(bundle) {
+  // jupyter-repl's renderers when they are around: same fidelity as a REPL
+  // result, including media types the fallback below cannot show.
+  const service = outputRenderer.get();
+  if (service) {
+    return service.renderRichMedia(bundle, {}, service.MEDIA_RENDERERS);
+  }
+  return renderFallbackBundle(bundle);
+}
+
+/** The self-contained subset: html, markdown, plain text. */
+function renderFallbackBundle(bundle) {
   const mediaType = MEDIA_PRIORITY.find((type) => bundle[type] != null);
   if (!mediaType) {
     return null;
@@ -28,7 +40,7 @@ function renderBundle(bundle) {
       transformLegacyLinks: false,
       transformNonFqdnLinks: false,
     });
-    return <div className="markdown" innerHTML={html} />;
+    return <div className="output-markdown" innerHTML={html} />;
   }
   return <pre className="output-text">{data}</pre>;
 }
@@ -123,6 +135,9 @@ class Inspector {
 
     this.disposables = new CompositeDisposable(
       this.store.onDidUpdate(() => etch.update(this)),
+      // A result on screen upgrades in place when jupyter-repl's renderers
+      // arrive, and degrades to the fallback when they go.
+      outputRenderer.onDidChange(() => etch.update(this)),
       atom.commands.add(this.refs.body, {
         "jupyter-inspector:focus-expression": () => this.focusExpression(),
       }),
@@ -199,4 +214,4 @@ class Inspector {
   }
 }
 
-module.exports = { Inspector, renderBundle };
+module.exports = { Inspector, renderBundle, renderFallbackBundle };

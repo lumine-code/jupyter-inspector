@@ -54,6 +54,11 @@
       "versions": {
         "^1.0.0": "consumeAutocompleteWatchEditor"
       }
+    },
+    "jupyter.output": {
+      "versions": {
+        "^1.0.0": "consumeJupyterOutput"
+      }
     }
   },
   "dependencies": {
