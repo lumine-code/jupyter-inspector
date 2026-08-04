@@ -145,7 +145,7 @@ describe("inspector bundle rendering", () => {
     expect(
       renderFallbackBundle({ "text/plain": "p", "text/markdown": "# m" }).props.className,
     ).toBe("output-markdown");
-    expect(renderFallbackBundle({ "text/plain": "p" }).props.className).toBe("output-text");
+    expect(renderFallbackBundle({ "text/plain": "p" }).props.className).toBe("inspector-text");
   });
 
   it("has nothing to show for a bundle it cannot render", () => {
@@ -159,24 +159,32 @@ describe("inspector bundle rendering", () => {
 
   it("shows the plain text even when richer types are in the bundle", () => {
     // IPython 9 pairs the ANSI text/plain with a text/html document carrying
-    // a hardcoded light palette; the plain form follows the theme.
-    const bundles = [];
+    // a hardcoded light palette; the plain form follows the theme, rendered
+    // through the service's ANSI mapper in a plain div — a <pre> picks up the
+    // UI theme's block styling and scrolls by itself instead of the body.
+    let ansiCalls = 0;
     outputRenderer.set({
       MEDIA_RENDERERS: {},
-      renderRichMedia(bundle) {
-        bundles.push(bundle);
-        return { tag: "div", props: { className: "service-rendered" }, children: [] };
+      truncateOutput: (text) => ({ text, truncated: false }),
+      ansiNodes(text) {
+        ansiCalls++;
+        return text;
+      },
+      renderRichMedia() {
+        throw new Error("the rich renderers must not see a bundle with text/plain");
       },
     });
 
-    renderBundle({ "text/plain": "p", "text/html": "<h1>Signature</h1>" });
+    const node = renderBundle({ "text/plain": "p", "text/html": "<h1>Signature</h1>" });
 
-    expect(bundles).toEqual([{ "text/plain": "p" }]);
+    expect(node.props.className).toBe("inspector-text");
+    expect(ansiCalls).toBe(1);
   });
 
   it("strips colour escapes when rendering plain text without the service", () => {
     const esc = String.fromCharCode(27);
     const node = renderFallbackBundle({ "text/plain": `${esc}[31mSignature:${esc}[39m np` });
+    expect(node.props.className).toBe("inspector-text");
     expect(node.children[0].text).toBe("Signature: np");
   });
 
@@ -190,7 +198,7 @@ describe("inspector bundle rendering", () => {
       },
     });
 
-    const node = renderBundle({ "text/plain": "p" });
+    const node = renderBundle({ "image/png": "iVBORw0KGgo=" });
 
     expect(node.props.className).toBe("service-rendered");
     expect(bundles.length).toBe(1);

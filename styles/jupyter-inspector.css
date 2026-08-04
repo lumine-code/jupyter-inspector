@@ -46,6 +46,15 @@
     color: var(--text-color-subtle);
   }
 
+  /* Preformatted help text, deliberately not a <pre>: UI themes give pre a
+     background, padding and its own overflow, which stole the scroll from
+     .inspector-body. */
+  .inspector-text {
+    white-space: pre-wrap;
+    font-family: var(--editor-font-family);
+    padding: 0 0.5em 0.5em;
+  }
+
   /* Kernels colour their inspection output; keep it legible on any theme. */
   span[style^="color"] {
     color: var(--text-color-info) !important;
