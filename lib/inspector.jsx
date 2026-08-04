@@ -87,7 +87,13 @@ class InspectorExpressionEditor {
     this.props.watchEditor?.(this.editor);
 
     this.disposables = new CompositeDisposable(
-      this.editor.onDidChange(() => this.props.onChange(this.editor.getText())),
+      this.editor.onDidChange(() => {
+        // Programmatic setText in update() must not echo back into the store:
+        // the emit would re-enter the parent's patch that is applying the very
+        // change being echoed.
+        if (this._settingText) return;
+        this.props.onChange(this.editor.getText());
+      }),
       atom.commands.add(this.editor.element, {
         "core:confirm": () => this.props.onConfirm(this.editor.getText()),
         "core:cancel": (event) =>
@@ -110,7 +116,12 @@ class InspectorExpressionEditor {
     this.props = props;
 
     if (this.editor && this.editor.getText() !== props.value) {
-      this.editor.setText(props.value || "");
+      this._settingText = true;
+      try {
+        this.editor.setText(props.value || "");
+      } finally {
+        this._settingText = false;
+      }
     }
     const scopeName = props.grammar?.scopeName;
     if (this.editor && scopeName && scopeName !== previousGrammar?.scopeName) {
