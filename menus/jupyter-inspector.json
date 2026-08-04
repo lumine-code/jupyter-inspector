@@ -1,0 +1,19 @@
+{
+  "menu": [
+    {
+      "label": "Packages",
+      "submenu": [
+        {
+          "label": "Jupyter Inspector",
+          "submenu": [
+            { "label": "Toggle Inspector", "command": "jupyter-inspector:toggle" },
+            {
+              "label": "Inspect Under Cursor",
+              "command": "jupyter-inspector:inspect-under-cursor"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

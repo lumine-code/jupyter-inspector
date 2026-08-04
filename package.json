@@ -1,0 +1,69 @@
+{
+  "name": "jupyter-inspector",
+  "author": "lumine-code",
+  "description": "Introspect the expression under the cursor with a Jupyter kernel.",
+  "repository": "https://github.com/lumine-code/jupyter-inspector",
+  "bugs": {
+    "url": "https://github.com/lumine-code/jupyter-inspector/issues"
+  },
+  "homepage": "https://github.com/lumine-code/jupyter-inspector#readme",
+  "keywords": [
+    "introspection",
+    "docstring",
+    "signature",
+    "ipython",
+    "python"
+  ],
+  "version": "1.0.0",
+  "license": "MIT",
+  "engines": {
+    "atom": ">=1.100.0 <2.0.0"
+  },
+  "backgroundTips": [
+    "You can look up the documentation for whatever is under the cursor with {{ 'jupyter-inspector:inspect-under-cursor' | keystroke }}"
+  ],
+  "main": "./lib/main",
+  "activationCommands": {
+    "atom-workspace": [
+      "jupyter-inspector:toggle",
+      "jupyter-inspector:inspect-under-cursor"
+    ]
+  },
+  "configSchema": {
+    "fontSize": {
+      "title": "Font size",
+      "description": "Font size of the inspection result. Zero follows the editor.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    }
+  },
+  "scripts": {
+    "test": "lumine --test spec",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "consumedServices": {
+    "jupyter.kernel": {
+      "versions": {
+        "^1.0.0": "consumeJupyterKernel"
+      }
+    },
+    "autocomplete.watch-editor": {
+      "versions": {
+        "^1.0.0": "consumeAutocompleteWatchEditor"
+      }
+    }
+  },
+  "dependencies": {
+    "@lumine-code/etch": "https://github.com/lumine-code/etch.git#5801d1e3dd5078db7b575d55e72c6e85bd0dcf53"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.6"
+  }
+}
