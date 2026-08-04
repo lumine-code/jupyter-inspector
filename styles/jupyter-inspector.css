@@ -25,7 +25,6 @@
 
       .inspector-expression {
         padding: calc(var(--component-padding) / 2);
-        font-size: var(--font-size);
         min-height: 2.5em;
         max-height: 10em;
         overflow-y: auto;
@@ -34,8 +33,14 @@
         background-color: var(--syntax-background-color);
         transition: border-color 0.15s ease;
 
+        /* A UI theme rings a focused editor only under `atom-panel-container`,
+           which is where the docks live, and even there it loses to this
+           rule's specificity on the border colour. Own the focus state here
+           rather than depending on where the panel sits. */
         &.is-focused {
-          border-color: var(--text-color-info);
+          outline: none;
+          border-color: var(--accent-color);
+          box-shadow: 0 0 0 1px var(--accent-color);
         }
 
         .cursor-line {
