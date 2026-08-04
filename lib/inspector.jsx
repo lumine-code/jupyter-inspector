@@ -2,23 +2,18 @@ const etch = require("@lumine-code/etch");
 const { CompositeDisposable } = require("atom");
 const outputRenderer = require("./output-renderer");
 
-/** An inspection bundle only ever carries these three. */
-const MEDIA_PRIORITY = ["text/html", "text/markdown", "text/plain"];
-
-const asText = (value) => (Array.isArray(value) ? value.join("") : String(value ?? ""));
-
-// The plain form renders in an ordinary div rather than a <pre>: UI themes
-// style pre globally (background, padding, its own overflow), which turned
-// the result into a scroll box of its own instead of letting
-// .inspector-body scroll. Whitespace is preserved by the stylesheet.
-function renderPlainText(data) {
-  const raw = asText(data);
+// The one representation the panel shows: the kernel's ANSI text/plain,
+// rendered in an ordinary div rather than a <pre>. UI themes style pre
+// globally (background, padding, its own overflow), which turned the result
+// into a scroll box of its own instead of letting .inspector-body scroll;
+// whitespace is preserved by the stylesheet instead.
+function renderResultText(text) {
   const service = outputRenderer.get();
   if (service) {
-    const { text, truncated } = service.truncateOutput(raw);
+    const { text: shown, truncated } = service.truncateOutput(text);
     return (
       <div className="inspector-text">
-        {service.ansiNodes(text)}
+        {service.ansiNodes(shown)}
         {truncated ? <div className="output-truncated">... output truncated</div> : null}
       </div>
     );
@@ -27,52 +22,7 @@ function renderPlainText(data) {
   // garbage, so they are stripped. Built at runtime because a control
   // character in a regex literal is a lint error.
   const escapes = new RegExp(String.fromCharCode(27) + "\[[0-9;]*m", "g");
-  return <div className="inspector-text">{raw.replace(escapes, "")}</div>;
-}
-
-function renderBundle(bundle) {
-  // IPython 9 ships the help twice: a text/html document with <h1> section
-  // headings and a hardcoded light pygments palette, and the classic ANSI
-  // text/plain whose colours map to the active theme. Show the plain form
-  // whenever it exists; the rich renderers only ever see bundles without it.
-  if (bundle["text/plain"] != null) {
-    return renderPlainText(bundle["text/plain"]);
-  }
-  // jupyter-repl's renderers when they are around: same fidelity as a REPL
-  // result, including media types the fallback below cannot show.
-  const service = outputRenderer.get();
-  if (service) {
-    return service.renderRichMedia(bundle, {}, service.MEDIA_RENDERERS);
-  }
-  return renderFallbackBundle(bundle);
-}
-
-/** The self-contained subset: html, markdown, plain text. */
-function renderFallbackBundle(bundle) {
-  const mediaType = MEDIA_PRIORITY.find((type) => bundle[type] != null);
-  if (!mediaType) {
-    return null;
-  }
-  const data = asText(bundle[mediaType]);
-
-  if (mediaType === "text/html") {
-    // Kernel output is trusted enough to render, but not to run.
-    return (
-      <div className="output-html" innerHTML={data.replace(/<script[\s\S]*?<\/script>/gi, "")} />
-    );
-  }
-  if (mediaType === "text/markdown") {
-    const html = atom.tools.markdown.render(data, {
-      sanitize: true,
-      breaks: true,
-      handleFrontMatter: false,
-      transformImageLinks: false,
-      transformLegacyLinks: false,
-      transformNonFqdnLinks: false,
-    });
-    return <div className="output-markdown" innerHTML={html} />;
-  }
-  return renderPlainText(data);
+  return <div className="inspector-text">{text.replace(escapes, "")}</div>;
 }
 
 function renderMessage(children) {
@@ -205,13 +155,8 @@ class Inspector {
       return renderMessage(<span className="text-error">{store.error}</span>);
     }
 
-    const bundle = store.bundle;
-    if (!bundle) {
+    if (store.text == null) {
       return renderMessage("No inspection loaded.");
-    }
-    const rendered = renderBundle(bundle);
-    if (!rendered) {
-      return renderMessage("No inspection bundle.");
     }
 
     return (
@@ -220,7 +165,7 @@ class Inspector {
         tabIndex={-1}
         style={{ fontSize: resultFontSize() }}
       >
-        {rendered}
+        {renderResultText(store.text)}
       </div>
     );
   }
@@ -257,4 +202,4 @@ class Inspector {
   }
 }
 
-module.exports = { Inspector, renderBundle, renderFallbackBundle };
+module.exports = { Inspector, renderResultText };

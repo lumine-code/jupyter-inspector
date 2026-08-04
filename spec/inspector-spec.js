@@ -1,5 +1,5 @@
 const etch = require("@lumine-code/etch");
-const { Inspector, renderBundle, renderFallbackBundle } = require("../lib/inspector");
+const { Inspector, renderResultText } = require("../lib/inspector");
 const outputRenderer = require("../lib/output-renderer");
 const { InspectorStore, buildPythonResultInspectorCode } = require("../lib/inspector-store");
 
@@ -87,7 +87,7 @@ describe("inspector store", () => {
     // header then carries the real name, not a bound temporary.
     expect(kernel.executed).toEqual([]);
     expect(kernel.inspected).toEqual([{ expression: "np.array", cursorPos: 8 }]);
-    expect(store.bundle).toEqual({ "text/plain": "docs" });
+    expect(store.text).toBe("docs");
   });
 
   it("swaps the temporary's name back for the expression", async () => {
@@ -104,7 +104,7 @@ describe("inspector store", () => {
 
     const inspectedName = kernel.inspected[0].expression;
     expect(inspectedName).toMatch(/^__jupyter_inspector_result_\d+$/);
-    expect(store.bundle["text/plain"]).toBe("Signature: make()(x)");
+    expect(store.text).toBe("Signature: make()(x)");
   });
 
   it("surfaces an execution error instead of a result", () => {
@@ -119,7 +119,7 @@ describe("inspector store", () => {
     });
 
     expect(store.error).toBe("NameError: boom");
-    expect(store.bundle).toBe(null);
+    expect(store.text).toBe(null);
   });
 
   it("announces each change", () => {
@@ -135,73 +135,27 @@ describe("inspector store", () => {
   });
 });
 
-describe("inspector bundle rendering", () => {
+describe("inspector result text rendering", () => {
   afterEach(() => outputRenderer.set(null));
 
-  it("prefers html, then markdown, then plain text without the service", () => {
-    expect(
-      renderFallbackBundle({ "text/plain": "p", "text/html": "<b>h</b>" }).props.className,
-    ).toBe("output-html");
-    expect(
-      renderFallbackBundle({ "text/plain": "p", "text/markdown": "# m" }).props.className,
-    ).toBe("output-markdown");
-    expect(renderFallbackBundle({ "text/plain": "p" }).props.className).toBe("inspector-text");
-  });
-
-  it("has nothing to show for a bundle it cannot render", () => {
-    expect(renderFallbackBundle({ "application/octet-stream": "??" })).toBe(null);
-  });
-
-  it("joins the string arrays Jupyter stores multi-line values as", () => {
-    const node = renderFallbackBundle({ "text/plain": ["one\n", "two"] });
-    expect(node.children[0].text).toContain("one");
-  });
-
-  it("shows the plain text even when richer types are in the bundle", () => {
-    // IPython 9 pairs the ANSI text/plain with a text/html document carrying
-    // a hardcoded light palette; the plain form follows the theme, rendered
-    // through the service's ANSI mapper in a plain div — a <pre> picks up the
-    // UI theme's block styling and scrolls by itself instead of the body.
-    let ansiCalls = 0;
+  it("colours and truncates through jupyter.output when the service is there", () => {
     outputRenderer.set({
-      MEDIA_RENDERERS: {},
-      truncateOutput: (text) => ({ text, truncated: false }),
-      ansiNodes(text) {
-        ansiCalls++;
-        return text;
-      },
-      renderRichMedia() {
-        throw new Error("the rich renderers must not see a bundle with text/plain");
-      },
+      truncateOutput: (text) => ({ text: text.slice(0, 4), truncated: true }),
+      ansiNodes: (text) => `ansi(${text})`,
     });
 
-    const node = renderBundle({ "text/plain": "p", "text/html": "<h1>Signature</h1>" });
+    const node = renderResultText("Signature: np.array");
 
     expect(node.props.className).toBe("inspector-text");
-    expect(ansiCalls).toBe(1);
+    expect(node.children[0].text).toBe("ansi(Sign)");
+    expect(node.children[1].props.className).toBe("output-truncated");
   });
 
-  it("strips colour escapes when rendering plain text without the service", () => {
+  it("strips colour escapes without the service", () => {
     const esc = String.fromCharCode(27);
-    const node = renderFallbackBundle({ "text/plain": `${esc}[31mSignature:${esc}[39m np` });
+    const node = renderResultText(`${esc}[31mSignature:${esc}[39m np`);
     expect(node.props.className).toBe("inspector-text");
     expect(node.children[0].text).toBe("Signature: np");
-  });
-
-  it("renders through jupyter.output when the service is there", () => {
-    const bundles = [];
-    outputRenderer.set({
-      MEDIA_RENDERERS: {},
-      renderRichMedia(bundle) {
-        bundles.push(bundle);
-        return { tag: "div", props: { className: "service-rendered" }, children: [] };
-      },
-    });
-
-    const node = renderBundle({ "image/png": "iVBORw0KGgo=" });
-
-    expect(node.props.className).toBe("service-rendered");
-    expect(bundles.length).toBe(1);
   });
 });
 
@@ -231,7 +185,7 @@ describe("inspector panel", () => {
   });
 
   it("shows a result once one arrives", () => {
-    store.setBundle({ "text/plain": "the docstring" });
+    store.setText("the docstring");
     flush(component);
 
     expect(component.element.querySelector(".inspector-result").textContent).toContain(
