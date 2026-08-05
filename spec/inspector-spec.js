@@ -2,6 +2,42 @@ const etch = require("@lumine-code/etch");
 const { Inspector, renderResultText } = require("../lib/inspector");
 const outputRenderer = require("../lib/output-renderer");
 const { InspectorStore, buildPythonResultInspectorCode } = require("../lib/inspector-store");
+const InspectorSession = require("../lib/inspector-session");
+
+// The `jupyter.kernel` surface the session consumes, driven by hand.
+function fakeProvider() {
+  const callbacks = { changed: [], removed: [] };
+  return {
+    active: null,
+    getActiveKernel() {
+      return this.active;
+    },
+    onDidChangeKernel(callback) {
+      callbacks.changed.push(callback);
+      return { dispose() {} };
+    },
+    onDidRemoveKernel(callback) {
+      callbacks.removed.push(callback);
+      return { dispose() {} };
+    },
+    setActive(kernel) {
+      this.active = kernel;
+      callbacks.changed.slice().forEach((callback) => callback(kernel));
+    },
+    remove(kernel) {
+      if (this.active === kernel) this.setActive(null);
+      callbacks.removed.slice().forEach((callback) => callback(kernel));
+    },
+  };
+}
+
+// A session already bound to one store, for panel specs.
+function fakeSession(store) {
+  return {
+    storeFor: () => store,
+    onDidChangeCurrentKernel: () => ({ dispose() {} }),
+  };
+}
 
 // This panel used to live inside jupyter-repl and reach into its store. It now
 // sees a kernel only as `jupyter.kernel` hands it over, so the fake below
@@ -30,25 +66,16 @@ function fakeKernel(overrides = {}) {
 }
 
 describe("inspector store", () => {
-  let store;
-
-  beforeEach(() => {
-    store = new InspectorStore();
-  });
-
-  it("reports having no kernel rather than asking one", () => {
-    store.loadExpression("df");
-    expect(store.error).toBe("No kernel running!");
-  });
-
   it("refuses an empty expression", () => {
-    store.load(fakeKernel(), "   ");
+    const store = new InspectorStore(fakeKernel());
+    store.loadExpression("   ");
     expect(store.error).toBe("No code to introspect!");
   });
 
   it("asks a non-Python kernel about the expression as written", () => {
     const kernel = fakeKernel({ language: "julia" });
-    store.load(kernel, "foo");
+    const store = new InspectorStore(kernel);
+    store.loadExpression("foo");
 
     expect(kernel.inspected).toEqual([{ expression: "foo", cursorPos: 3 }]);
     expect(kernel.executed).toEqual([]);
@@ -56,7 +83,8 @@ describe("inspector store", () => {
 
   it("evaluates a Python expression to a name before inspecting it", () => {
     const kernel = fakeKernel();
-    store.load(kernel, "df.head()");
+    const store = new InspectorStore(kernel);
+    store.loadExpression("df.head()");
 
     // The expression cannot be inspected directly, so it is bound first.
     expect(kernel.executed.length).toBe(1);
@@ -80,7 +108,8 @@ describe("inspector store", () => {
 
   it("asks a Python kernel about a name directly", async () => {
     const kernel = fakeKernel();
-    store.load(kernel, "np.array");
+    const store = new InspectorStore(kernel);
+    store.loadExpression("np.array");
     await Promise.resolve();
 
     // Nothing to evaluate: a dotted name resolves as written, and the answer's
@@ -92,7 +121,8 @@ describe("inspector store", () => {
 
   it("swaps the temporary's name back for the expression", async () => {
     const kernel = fakeKernel();
-    store.load(kernel, "make()");
+    const store = new InspectorStore(kernel);
+    store.loadExpression("make()");
     kernel.inspectResult = {
       found: true,
       data: { "text/plain": "Signature: __jupyter_inspector_result_1(x)" },
@@ -109,7 +139,8 @@ describe("inspector store", () => {
 
   it("surfaces an execution error instead of a result", () => {
     const kernel = fakeKernel();
-    store.load(kernel, "boom()");
+    const store = new InspectorStore(kernel);
+    store.loadExpression("boom()");
 
     kernel.lastOnResults({
       output_type: "error",
@@ -123,15 +154,50 @@ describe("inspector store", () => {
   });
 
   it("announces each change", () => {
+    const store = new InspectorStore(fakeKernel());
     let calls = 0;
     const subscription = store.onDidUpdate(() => calls++);
 
     store.setExpression("df");
     store.setError("nope");
-    store.reset();
 
-    expect(calls).toBe(3);
+    expect(calls).toBe(2);
     subscription.dispose();
+  });
+});
+
+describe("inspector session", () => {
+  it("keeps one store per kernel and swaps with the active one", () => {
+    const session = new InspectorSession();
+    const provider = fakeProvider();
+    const a = fakeKernel({ displayName: "A" });
+    const b = fakeKernel({ displayName: "B" });
+    provider.active = a;
+    session.setProvider(provider);
+
+    session.storeFor().setText("docs of A");
+    provider.setActive(b);
+    expect(session.storeFor().text).toBe(null);
+    session.storeFor().setText("docs of B");
+
+    // Coming back to A shows what A remembered.
+    provider.setActive(a);
+    expect(session.storeFor().text).toBe("docs of A");
+    session.destroy();
+  });
+
+  it("drops a kernel store when the kernel goes", () => {
+    const session = new InspectorSession();
+    const provider = fakeProvider();
+    const a = fakeKernel();
+    provider.active = a;
+    session.setProvider(provider);
+    session.storeFor().setText("gone soon");
+
+    provider.remove(a);
+    expect(session.kernel).toBe(null);
+    expect(session.stores.size).toBe(0);
+    session.destroy();
   });
 });
 
@@ -164,8 +230,8 @@ describe("inspector panel", () => {
   let store;
 
   beforeEach(() => {
-    store = new InspectorStore();
-    component = new Inspector({ store, watchEditor: () => {} });
+    store = new InspectorStore(fakeKernel());
+    component = new Inspector({ session: fakeSession(store), watchEditor: () => {} });
     flush(component);
   });
 
@@ -194,10 +260,23 @@ describe("inspector panel", () => {
   });
 
   it("shows an error in place of a result", () => {
-    store.setError("No kernel running!");
+    store.setError("No code to introspect!");
     flush(component);
 
-    expect(component.element.querySelector(".text-error").textContent).toBe("No kernel running!");
+    expect(component.element.querySelector(".text-error").textContent).toBe(
+      "No code to introspect!",
+    );
+  });
+
+  it("says no kernel is running when none is", () => {
+    const bare = new Inspector({ session: fakeSession(null), watchEditor: () => {} });
+    flush(bare);
+
+    expect(bare.element.querySelector(".inspector-message").textContent).toContain(
+      "No kernel running",
+    );
+    expect(bare.element.querySelector("atom-text-editor")).toBe(null);
+    bare.destroy();
   });
 });
 
@@ -207,7 +286,7 @@ describe("inspector pane", () => {
   // Losing the kernel service destroys the item directly rather than through
   // `pane.destroyItem`, and a pane only drops an item that tells it so.
   it("leaves no tab behind when destroyed directly", async () => {
-    const pane = new InspectorPane(new InspectorStore(), () => {});
+    const pane = new InspectorPane(fakeSession(new InspectorStore(fakeKernel())), () => {});
     const workspacePane = atom.workspace.getCenter().getActivePane();
     workspacePane.addItem(pane);
 
@@ -219,7 +298,7 @@ describe("inspector pane", () => {
   });
 
   it("survives being destroyed twice", () => {
-    const pane = new InspectorPane(new InspectorStore(), () => {});
+    const pane = new InspectorPane(fakeSession(new InspectorStore(fakeKernel())), () => {});
     pane.destroy();
     expect(() => pane.destroy()).not.toThrow();
   });

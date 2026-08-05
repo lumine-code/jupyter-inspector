@@ -9,9 +9,9 @@ The kernel already knows what a name is bound to, what a function's signature lo
 - **Ask about the cursor**: introspects whatever the cursor sits in — a name, a dotted path, a subscript or a call.
 - **Ask about anything else**: an expression field takes any expression, so a lookup does not have to be typed into the buffer first.
 - **Evaluates first**: an expression a kernel cannot introspect directly, like `df.head()`, is bound to a temporary name and introspected there, then discarded.
-- **Rich answers**: renders the HTML or Markdown a kernel returns, falling back to its plain text.
+- **Theme-true answers**: shows the kernel's plain-text help with its ANSI colours mapped to the editor theme.
 - **Any kernel**: non-Python kernels are asked about the expression as written.
-- **Follows the kernel**: the panel empties when the kernel it was reading goes away.
+- **Remembers per kernel**: every kernel keeps its last inspection and the panel swaps with the active editor's kernel; a kernel that goes away takes its result along.
 
 ## Installation
 

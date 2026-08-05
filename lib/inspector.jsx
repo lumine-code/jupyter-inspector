@@ -119,15 +119,18 @@ class InspectorExpressionEditor {
   }
 }
 
-/** The kernel's introspection of the current expression. */
+/** The active kernel's introspection of its remembered expression. */
 class Inspector {
-  constructor({ store, watchEditor }) {
-    this.store = store;
+  constructor({ session, watchEditor }) {
+    this.session = session;
     this.watchEditor = watchEditor;
+    this.storeSubscription = null;
     etch.initialize(this);
 
     this.disposables = new CompositeDisposable(
-      this.store.onDidUpdate(() => etch.update(this)),
+      // Results belong to a kernel, so the subscription moves with the
+      // active one — the jupyter-variables lifecycle.
+      this.session.onDidChangeCurrentKernel(() => this.watchCurrentKernel()),
       // A result on screen upgrades in place when jupyter-repl's renderers
       // arrive, and degrades to the fallback when they go.
       outputRenderer.onDidChange(() => etch.update(this)),
@@ -135,6 +138,15 @@ class Inspector {
         "jupyter-inspector:focus-expression": () => this.focusExpression(),
       }),
     );
+
+    this.watchCurrentKernel();
+  }
+
+  watchCurrentKernel() {
+    this.storeSubscription?.dispose();
+    const store = this.session.storeFor();
+    this.storeSubscription = store ? store.onDidUpdate(() => etch.update(this)) : null;
+    etch.update(this);
   }
 
   focusExpression = () => {
@@ -145,9 +157,7 @@ class Inspector {
     this.refs.body?.focus({ preventScroll: true });
   };
 
-  renderResult() {
-    const store = this.store;
-
+  renderResult(store) {
     if (store.loading) {
       return renderMessage("Loading...");
     }
@@ -171,7 +181,16 @@ class Inspector {
   }
 
   render() {
-    const store = this.store;
+    const store = this.session.storeFor();
+    if (!store) {
+      return (
+        <div className="inspector-panel">
+          <div className="inspector-body" ref="body" tabIndex={0}>
+            {renderMessage("No kernel running")}
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="inspector-panel">
         <div className="inspector-controls">
@@ -186,7 +205,7 @@ class Inspector {
           />
         </div>
         <div className="inspector-body" ref="body" tabIndex={0}>
-          {this.renderResult()}
+          {this.renderResult(store)}
         </div>
       </div>
     );
@@ -197,6 +216,7 @@ class Inspector {
   }
 
   destroy() {
+    this.storeSubscription?.dispose();
     this.disposables.dispose();
     return etch.destroy(this);
   }
