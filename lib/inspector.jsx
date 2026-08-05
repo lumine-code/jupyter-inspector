@@ -21,7 +21,7 @@ function renderResultText(text) {
   // Without jupyter-repl's ANSI renderer the colour escapes would print as
   // garbage, so they are stripped. Built at runtime because a control
   // character in a regex literal is a lint error.
-  const escapes = new RegExp(String.fromCharCode(27) + "\[[0-9;]*m", "g");
+  const escapes = new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g");
   return <div className="inspector-text">{text.replace(escapes, "")}</div>;
 }
 
