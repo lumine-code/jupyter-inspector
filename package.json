@@ -23,6 +23,13 @@
     "You can look up the documentation for whatever is under the cursor with {{ 'jupyter-inspector:inspect' | keystroke }}"
   ],
   "main": "./lib/main",
+  "files": [
+    "keymaps",
+    "lib",
+    "menus",
+    "spec",
+    "styles"
+  ],
   "activationCommands": {
     "atom-workspace": [
       "jupyter-inspector:toggle",
