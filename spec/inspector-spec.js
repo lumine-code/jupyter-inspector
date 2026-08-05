@@ -272,7 +272,7 @@ describe("inspector panel", () => {
     const bare = new Inspector({ session: fakeSession(null), watchEditor: () => {} });
     flush(bare);
 
-    expect(bare.element.querySelector(".inspector-message").textContent).toContain(
+    expect(bare.element.querySelector("ul.background-message").textContent).toContain(
       "No kernel running",
     );
     expect(bare.element.querySelector("atom-text-editor")).toBe(null);

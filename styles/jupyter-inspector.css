@@ -10,6 +10,8 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+    /* The centred background message positions against this. */
+    position: relative;
   }
 
   .inspector-controls {

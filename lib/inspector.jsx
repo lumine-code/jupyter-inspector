@@ -183,10 +183,16 @@ class Inspector {
   render() {
     const store = this.session.storeFor();
     if (!store) {
+      // The big centred empty-state every sidebar panel shows, the variables
+      // panel included — not the small in-flow note used between results.
       return (
         <div className="inspector-panel">
           <div className="inspector-body" ref="body" tabIndex={0}>
-            {renderMessage("No kernel running")}
+            <background-tips>
+              <ul className="centered background-message">
+                <li>No kernel running</li>
+              </ul>
+            </background-tips>
           </div>
         </div>
       );
