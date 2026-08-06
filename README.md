@@ -41,9 +41,9 @@ Introspecting from the editor does not move focus, so a lookup can be read witho
 
 ## Customization
 
-Paste this into your `styles.less` to give the result more room to breathe:
+Paste this into your `styles.css` to give the result more room to breathe:
 
-```less
+```css
 .jupyter-inspector {
   .inspector-body {
     padding: 0.5em;
