@@ -1,6 +1,6 @@
 {
   "atom-workspace": {
-    "alt-j i": "jupyter-inspector:toggle"
+    "alt-j i": "jupyter-inspector:toggle-focus"
   },
 
   "atom-workspace atom-text-editor.inspector-expression:not([mini])": {

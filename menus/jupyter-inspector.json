@@ -6,7 +6,7 @@
         {
           "label": "Jupyter Inspector",
           "submenu": [
-            { "label": "Toggle Inspector", "command": "jupyter-inspector:toggle" },
+            { "label": "Toggle Focus", "command": "jupyter-inspector:toggle-focus" },
             {
               "label": "Inspect Under Cursor",
               "command": "jupyter-inspector:inspect"

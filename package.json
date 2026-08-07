@@ -32,7 +32,7 @@
   ],
   "activationCommands": {
     "atom-workspace": [
-      "jupyter-inspector:toggle",
+      "jupyter-inspector:toggle-focus",
       "jupyter-inspector:inspect"
     ]
   },
