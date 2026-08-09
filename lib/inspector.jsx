@@ -1,6 +1,6 @@
 /** @jsx etch.dom */
 const etch = require("@lumine-code/etch");
-const { CompositeDisposable } = require("atom");
+const { CompositeDisposable } = require("lumine");
 const outputRenderer = require("./output-renderer");
 
 // The one representation the panel shows: the kernel's ANSI text/plain,
@@ -33,7 +33,7 @@ function renderMessage(children) {
 // The setting is a pixel count, and zero means "whatever the editor uses". A
 // bare number is not a valid CSS length, so it has to carry its unit.
 function resultFontSize() {
-  const size = atom.config.get("jupyter-inspector.fontSize");
+  const size = lumine.config.get("jupyter-inspector.fontSize");
   return size ? `${size}px` : "inherit";
 }
 
@@ -52,7 +52,7 @@ class InspectorExpressionEditor {
     this.props = props;
     etch.initialize(this);
 
-    this.editor = atom.workspace.buildTextEditor({
+    this.editor = lumine.workspace.buildTextEditor({
       softWrapped: true,
       lineNumberGutterVisible: false,
       placeholderText: "Expression to inspect",
@@ -61,7 +61,7 @@ class InspectorExpressionEditor {
     // A form control, not a document: the editor draws the shared input box.
     this.editor.element.setAttribute("input", "");
     if (this.props.grammar) {
-      atom.grammars.assignLanguageMode(this.editor.getBuffer(), this.props.grammar.scopeName);
+      lumine.grammars.assignLanguageMode(this.editor.getBuffer(), this.props.grammar.scopeName);
     }
     if (this.props.value) {
       this.editor.setText(this.props.value);
@@ -77,7 +77,7 @@ class InspectorExpressionEditor {
         if (this._settingText) return;
         this.props.onChange(this.editor.getText());
       }),
-      atom.commands.add(this.editor.element, {
+      lumine.commands.add(this.editor.element, {
         "core:confirm": () => this.props.onConfirm(this.editor.getText()),
         "core:cancel": (event) =>
           clearExpressionOrAbortMultiCursor(this.editor, this.props.onChange, event),
@@ -108,7 +108,7 @@ class InspectorExpressionEditor {
     }
     const scopeName = props.grammar?.scopeName;
     if (this.editor && scopeName && scopeName !== previousGrammar?.scopeName) {
-      atom.grammars.assignLanguageMode(this.editor.getBuffer(), scopeName);
+      lumine.grammars.assignLanguageMode(this.editor.getBuffer(), scopeName);
     }
     return etch.update(this);
   }
@@ -135,7 +135,7 @@ class Inspector {
       // A result on screen upgrades in place when jupyter-repl's renderers
       // arrive, and degrades to the fallback when they go.
       outputRenderer.onDidChange(() => etch.update(this)),
-      atom.commands.add(this.refs.body, {
+      lumine.commands.add(this.refs.body, {
         "jupyter-inspector:focus-expression": () => this.focusExpression(),
       }),
     );

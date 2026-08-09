@@ -21,7 +21,7 @@ It reads its kernels from [`jupyter-repl`](https://github.com/lumine-code/jupyte
 
 ## Commands
 
-Commands available in `atom-workspace`:
+Commands available in `lumine-workspace`:
 
 - `jupyter-inspector:toggle-focus`: open the inspector, or return focus to the editor when it already has it,
 - `jupyter-inspector:inspect`: introspect the expression under the cursor, revealing the panel when it is hidden.

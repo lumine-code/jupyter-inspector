@@ -247,7 +247,7 @@ describe("inspector panel", () => {
   });
 
   it("offers an expression editor", () => {
-    expect(component.element.querySelector("atom-text-editor.inspector-expression")).toBeTruthy();
+    expect(component.element.querySelector("lumine-text-editor.inspector-expression")).toBeTruthy();
   });
 
   it("shows a result once one arrives", () => {
@@ -275,7 +275,7 @@ describe("inspector panel", () => {
     expect(bare.element.querySelector("ul.background-message").textContent).toContain(
       "No kernel running",
     );
-    expect(bare.element.querySelector("atom-text-editor")).toBe(null);
+    expect(bare.element.querySelector("lumine-text-editor")).toBe(null);
     bare.destroy();
   });
 });
@@ -287,7 +287,7 @@ describe("inspector pane", () => {
   // `pane.destroyItem`, and a pane only drops an item that tells it so.
   it("leaves no tab behind when destroyed directly", async () => {
     const pane = new InspectorPane(fakeSession(new InspectorStore(fakeKernel())), () => {});
-    const workspacePane = atom.workspace.getCenter().getActivePane();
+    const workspacePane = lumine.workspace.getCenter().getActivePane();
     workspacePane.addItem(pane);
 
     expect(workspacePane.getItems()).toContain(pane);

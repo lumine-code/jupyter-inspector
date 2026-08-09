@@ -1,9 +1,9 @@
 {
-  "atom-workspace": {
+  "lumine-workspace": {
     "alt-j i": "jupyter-inspector:toggle-focus"
   },
 
-  "atom-workspace atom-text-editor.inspector-expression:not([mini])": {
+  "lumine-workspace lumine-text-editor.inspector-expression:not([mini])": {
     "enter": "core:confirm",
     "shift-enter": "editor:newline",
     "escape": "core:cancel",
@@ -11,7 +11,7 @@
     "shift-tab": "jupyter-inspector:focus-body"
   },
 
-  "atom-workspace .jupyter-inspector .inspector-body": {
+  "lumine-workspace .jupyter-inspector .inspector-body": {
     "up": "jupyter-inspector:scroll-up",
     "down": "jupyter-inspector:scroll-down",
     "tab": "jupyter-inspector:focus-expression",
