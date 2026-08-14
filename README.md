@@ -15,7 +15,7 @@ The kernel already knows what a name is bound to, what a function's signature lo
 
 ## Installation
 
-To install `jupyter-inspector` search for _jupyter-inspector_ in the Install pane of the Lumine settings or run `lumine --install lumine-code/jupyter-inspector`.
+To install `jupyter-inspector` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/jupyter-inspector`.
 
 It reads its kernels from [`jupyter-repl`](https://github.com/lumine-code/jupyter-repl), which needs to be installed too.
 
@@ -54,9 +54,9 @@ Paste this into your `styles.css` to give the result more room to breathe:
 
 ## Services
 
-- **jupyter.kernel** (`^1.0.0`): consumed to read the active kernel and ask it to introspect an expression.
-- **autocomplete.watch-editor** (`^1.0.0`): consumed to offer completions in the expression field.
-- **jupyter.output** (`^1.0.0`): consumed to colour and truncate the ANSI help text; without it the colour escapes are stripped.
+- `jupyter.kernel`: consumed to read the active kernel and ask it to introspect an expression.
+- `autocomplete.watch-editor`: consumed to offer completions in the expression field.
+- `jupyter.output`: consumed to colour and truncate the ANSI help text; without it the colour escapes are stripped.
 
 ## Contributing
 
