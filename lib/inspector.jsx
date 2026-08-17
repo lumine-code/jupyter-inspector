@@ -81,7 +81,10 @@ class InspectorExpressionEditor {
         "core:confirm": () => this.props.onConfirm(this.editor.getText()),
         "core:cancel": (event) =>
           clearExpressionOrAbortMultiCursor(this.editor, this.props.onChange, event),
-        "jupyter-inspector:focus-body": () => this.props.onFocusBody?.(),
+        "jupyter-inspector:focus-body": {
+          description: "Move focus to the text of the inspection.",
+          didDispatch: () => this.props.onFocusBody?.(),
+        },
       }),
     );
   }
@@ -136,7 +139,10 @@ class Inspector {
       // arrive, and degrades to the fallback when they go.
       outputRenderer.onDidChange(() => etch.update(this)),
       lumine.commands.add(this.refs.body, {
-        "jupyter-inspector:focus-expression": () => this.focusExpression(),
+        "jupyter-inspector:focus-expression": {
+          description: "Move focus to the box where an expression is typed.",
+          didDispatch: () => this.focusExpression(),
+        },
       }),
     );
 
