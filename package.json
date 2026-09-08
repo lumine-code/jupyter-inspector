@@ -51,6 +51,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
+  "deserializers": {
+    "jupyter-inspector/InspectorPane": "deserializeInspectorPane"
+  },
   "consumedServices": {
     "jupyter.kernel": {
       "versions": {
