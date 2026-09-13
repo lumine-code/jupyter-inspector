@@ -39,6 +39,8 @@ describe("jupyter inspector pane persistence", () => {
     const restored = main.deserializeInspectorPane();
 
     expect(restored.serialize()).toEqual(STATE);
+    expect(restored.getDefaultLocation()).toBe("right");
+    expect(restored.getAllowedLocations()).toEqual(["right", "left"]);
   });
 
   it("round-trips through the manifest-registered proxy before activation", () => {
