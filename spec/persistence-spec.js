@@ -25,7 +25,7 @@ describe("jupyter inspector pane persistence", () => {
       main.deactivate();
     }
     if (loadedPackage && lumine.packages.isPackageLoaded(loadedPackage.name)) {
-      lumine.packages.unloadPackage(loadedPackage.name);
+      await lumine.packages.unloadPackage(loadedPackage.name);
     }
     loadedPackage = null;
   });

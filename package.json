@@ -30,12 +30,6 @@
     "spec",
     "styles"
   ],
-  "activationCommands": {
-    "lumine-workspace": [
-      "jupyter-inspector:toggle-focus",
-      "jupyter-inspector:inspect"
-    ]
-  },
   "configSchema": {
     "fontSize": {
       "title": "Font size",
