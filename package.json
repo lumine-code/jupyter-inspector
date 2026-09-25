@@ -19,9 +19,6 @@
   "engines": {
     "lumine": "^1.0.0"
   },
-  "backgroundTips": [
-    "You can look up the documentation for whatever is under the cursor with {{ 'jupyter-inspector:inspect' | keystroke }}"
-  ],
   "main": "./lib/main",
   "files": [
     "keymaps",
@@ -47,6 +44,13 @@
   },
   "deserializers": {
     "jupyter-inspector/InspectorPane": "deserializeInspectorPane"
+  },
+  "providedServices": {
+    "background-tips.provider": {
+      "versions": {
+        "1.0.0": "provideBackgroundTips"
+      }
+    }
   },
   "consumedServices": {
     "jupyter.kernel": {
