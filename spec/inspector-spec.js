@@ -93,7 +93,7 @@ describe("inspector store", () => {
     expect(kernel.inspected).toEqual([]);
 
     kernel.lastOnResults({ stream: "status", data: "ok" });
-    expect(kernel.inspected[0].expression).toMatch(/^__jupyter_inspector_result_\d+$/);
+    expect(kernel.inspected[0].expression).toMatch(/^__jupyter_inspector_result_[A-Za-z0-9_]+$/);
   });
 
   it("generates Python whose identifiers are legal", () => {
@@ -123,17 +123,17 @@ describe("inspector store", () => {
     const kernel = fakeKernel();
     const store = new InspectorStore(kernel);
     store.loadExpression("make()");
-    kernel.inspectResult = {
-      found: true,
-      data: { "text/plain": "Signature: __jupyter_inspector_result_1(x)" },
-    };
+    spyOn(kernel, "inspect").and.callFake((name, cursorPos) => {
+      kernel.inspected.push({ expression: name, cursorPos });
+      return Promise.resolve({ found: true, data: { "text/plain": `Signature: ${name}(x)` } });
+    });
 
     kernel.lastOnResults({ stream: "status", data: "ok" });
     await Promise.resolve();
     await Promise.resolve();
 
     const inspectedName = kernel.inspected[0].expression;
-    expect(inspectedName).toMatch(/^__jupyter_inspector_result_\d+$/);
+    expect(inspectedName).toMatch(/^__jupyter_inspector_result_[A-Za-z0-9_]+$/);
     expect(store.text).toBe("Signature: make()(x)");
   });
 
@@ -203,7 +203,7 @@ describe("inspector store", () => {
     store.destroy();
   });
 
-  it("does not use a revoked wrapper when an evaluation finishes after destruction", () => {
+  it("ignores a revoked wrapper's rejected cleanup after destruction", () => {
     const kernel = fakeKernel();
     const store = new InspectorStore(kernel);
     store.loadExpression("make()");
@@ -214,6 +214,39 @@ describe("inspector store", () => {
     };
     expect(() => deliver({ stream: "status", data: "ok" })).not.toThrow();
     expect(kernel.executed.length).toBe(1);
+  });
+
+  it("cleans a destroyed store's late result through its original live kernel", () => {
+    const kernel = fakeKernel();
+    const replacement = fakeKernel();
+    const store = new InspectorStore(kernel);
+    store.loadExpression("make()");
+    const deliver = kernel.lastOnResults;
+    store.destroy();
+    store.kernel = replacement;
+    deliver({ stream: "status", data: "ok" });
+    deliver({ output_type: "status", execution_state: "idle" });
+    expect(kernel.executed.filter((code) => code.startsWith("globals().pop")).length).toBe(1);
+    expect(replacement.executed).toEqual([]);
+    expect(store.text).toBeNull();
+  });
+
+  it("keeps independent stores' temporary names distinct on a shared kernel", () => {
+    const kernel = fakeKernel();
+    const first = new InspectorStore(kernel);
+    const second = new InspectorStore(kernel);
+    first.loadExpression("first()");
+    const firstReply = kernel.lastOnResults;
+    second.loadExpression("second()");
+    const secondReply = kernel.lastOnResults;
+    firstReply({ stream: "status", data: "ok" });
+    secondReply({ stream: "status", data: "ok" });
+    const names = kernel.inspected.map((request) => request.expression);
+    expect(names.length).toBe(2);
+    expect(names[0]).not.toBe(names[1]);
+    expect(names.every((name) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name))).toBe(true);
+    first.destroy();
+    second.destroy();
   });
 
   it("cleans the temporary when its inspection rejects", async () => {
