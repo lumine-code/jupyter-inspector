@@ -164,6 +164,68 @@ describe("inspector store", () => {
     expect(calls).toBe(2);
     subscription.dispose();
   });
+
+  it("shows a rejected inspection as an error and ends loading", async () => {
+    const store = new InspectorStore(
+      fakeKernel({ inspect: () => Promise.reject(new Error("Kernel restarted")) }),
+    );
+    store.loadExpression("value");
+    await Promise.resolve();
+    expect(store.error).toBe("Kernel restarted");
+    expect(store.loading).toBe(false);
+    store.destroy();
+  });
+
+  it("ignores an older inspection after a newer empty request", async () => {
+    let finish;
+    const store = new InspectorStore(
+      fakeKernel({ inspect: () => new Promise((resolve) => (finish = resolve)) }),
+    );
+    store.loadExpression("value");
+    store.loadExpression("");
+    finish({ found: true, data: { "text/plain": "old docs" } });
+    await Promise.resolve();
+    expect(store.error).toBe("No code to introspect!");
+    expect(store.text).toBeNull();
+    store.destroy();
+  });
+
+  it("cleans a superseded evaluation once across all of its late messages", () => {
+    const kernel = fakeKernel();
+    const store = new InspectorStore(kernel);
+    store.loadExpression("make()");
+    const earlier = kernel.lastOnResults;
+    store.loadExpression("other");
+    earlier({ output_type: "stream", text: "late" });
+    earlier({ stream: "status", data: "ok" });
+    earlier({ output_type: "status", execution_state: "idle" });
+    expect(kernel.executed.filter((code) => code.startsWith("globals().pop")).length).toBe(1);
+    store.destroy();
+  });
+
+  it("does not use a revoked wrapper when an evaluation finishes after destruction", () => {
+    const kernel = fakeKernel();
+    const store = new InspectorStore(kernel);
+    store.loadExpression("make()");
+    const deliver = kernel.lastOnResults;
+    store.destroy();
+    kernel.executeWatch = () => {
+      throw new Error("Kernel destroyed");
+    };
+    expect(() => deliver({ stream: "status", data: "ok" })).not.toThrow();
+    expect(kernel.executed.length).toBe(1);
+  });
+
+  it("cleans the temporary when its inspection rejects", async () => {
+    const kernel = fakeKernel({ inspect: () => Promise.reject(new Error("Inspect failed")) });
+    const store = new InspectorStore(kernel);
+    store.loadExpression("make()");
+    kernel.lastOnResults({ stream: "status", data: "ok" });
+    await Promise.resolve();
+    expect(store.error).toBe("Inspect failed");
+    expect(kernel.executed.filter((code) => code.startsWith("globals().pop")).length).toBe(1);
+    store.destroy();
+  });
 });
 
 describe("inspector session", () => {
@@ -196,6 +258,22 @@ describe("inspector session", () => {
 
     provider.remove(a);
     expect(session.kernel).toBe(null);
+    expect(session.stores.size).toBe(0);
+    session.destroy();
+  });
+
+  it("drops the previous provider's stores and ignores its late events", () => {
+    const session = new InspectorSession();
+    const first = fakeProvider();
+    const second = fakeProvider();
+    first.active = fakeKernel();
+    second.active = fakeKernel();
+    session.setProvider(first);
+    const originalStore = session.storeFor();
+    session.setProvider(second);
+    first.setActive(fakeKernel());
+    expect(originalStore.destroyed).toBe(true);
+    expect(session.kernel).toBe(second.active);
     expect(session.stores.size).toBe(0);
     session.destroy();
   });
