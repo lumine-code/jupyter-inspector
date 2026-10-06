@@ -1,5 +1,5 @@
 .jupyter-inspector {
-  padding: var(--component-padding);
+  padding: var(--ui-spacing);
   overflow: hidden;
   outline: none;
   display: flex;
