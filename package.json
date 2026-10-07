@@ -67,6 +67,11 @@
       "versions": {
         "^1.0.0": "consumeJupyterOutput"
       }
+    },
+    "jupyter.context": {
+      "versions": {
+        "^1.0.0": "consumeJupyterContext"
+      }
     }
   },
   "dependencies": {

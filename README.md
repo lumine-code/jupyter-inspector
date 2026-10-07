@@ -54,9 +54,12 @@ Paste this into your `styles.css` to give the result more room to breathe:
 
 ## Services
 
+- `jupyter.context`: consumed to resolve the command's editor and expression.
 - `jupyter.kernel`: consumed to read the active kernel and ask it to introspect an expression.
 - `autocomplete.watch-editor`: consumed to offer completions in the expression field.
 - `jupyter.output`: consumed to colour and truncate the ANSI help text; without it the colour escapes are stripped.
+
+- `background-tips.provider`: provided to teach the package's headline action in an empty workspace.
 
 ## Contributing
 
