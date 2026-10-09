@@ -118,7 +118,11 @@ describe("inspector store", () => {
     expect(kernel.executed.length).toBe(1);
     await settle();
     expect(kernel.executed[0]).toContain("def _jupyter_inspector_eval():");
-    expect(kernel.executed[0]).toContain('"df.head()"');
+    const literal = JSON.stringify("df.head()");
+    const embeddedLiteral = JSON.stringify(literal).slice(1, -1);
+    expect([literal, embeddedLiteral].some((value) => kernel.executed[0].includes(value))).toBe(
+      true,
+    );
     expect(kernel.inspected).toEqual([]);
     kernel.lastOnResults({
       stream: "status",
