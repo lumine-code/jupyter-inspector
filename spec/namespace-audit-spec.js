@@ -3,6 +3,10 @@ const path = require("node:path");
 
 describe("Inspector generated Python namespace", () => {
   it("keeps an existing helper and isolates statement locals while publishing its owned target", async () => {
+    if (process.env.LUMINE_TEST_LIVE_PYTHON !== "true")
+      return pending(
+        "Real Python namespace validation requires explicit disposable-runner opt-in.",
+      );
     for (const method of ["openPath", "openExternal", "openApplication", "showItemInFolder"])
       spyOn(lumine.shell, method).and.resolveTo();
     spyOn(lumine.application, "openWindow").and.resolveTo();

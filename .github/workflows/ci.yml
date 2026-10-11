@@ -34,26 +34,52 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      # Lint, formatting, and packing don't need the native `zeromq` binding
-      # (rebuilt for Electron inside the editor), so skip install scripts for a
-      # fast, reliable job.
+      # npm may record the @lumine-code git forks with ssh URLs, but the runner
+      # has no ssh key, so rewrite them to anonymous HTTPS (the forks are public).
+      - name: Use HTTPS for GitHub git dependencies
+        run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Lint
         run: npm run lint
       - name: Check formatting
         run: npm run format:check
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate
+      - name: Check package contents
+        run: npm pack --dry-run
 
   integration:
-    # Run the Jasmine spec suite inside a real Lumine build. The specs use the
-    # editor runtime (lumine config/notifications, the watchFile path-watcher), so
-    # this is the single place they run in CI.
-    name: Lumine integration specs
-    runs-on: ubuntu-latest
+    # Run the Jasmine spec suite inside a real Lumine build; the specs exercise
+    # the editor runtime (text editors, config, and service wiring).
+    name: Lumine integration specs on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
     env:
       LUMINE_JASMINE_REPORTER: list
+      LUMINE_TEST_LIVE_PYTHON: "true"
+      LUMINE_TEST_PYTHON: python
+      LUMINE_DISABLE_SHELLING_OUT_FOR_ENVIRONMENT: "true"
+      LUMINE_HOME: ${{ github.workspace }}/jupyter-inspector-spec-home
+      HOME: ${{ github.workspace }}/jupyter-inspector-spec-home
+      USERPROFILE: ${{ github.workspace }}/jupyter-inspector-spec-home
+      XDG_CONFIG_HOME: ${{ github.workspace }}/jupyter-inspector-spec-home
+      TEMP: ${{ github.workspace }}/jupyter-inspector-spec-tmp
+      TMP: ${{ github.workspace }}/jupyter-inspector-spec-tmp
+      TMPDIR: ${{ github.workspace }}/jupyter-inspector-spec-tmp
     steps:
+      - name: Create the private home and temporary directory
+        run: mkdir -p "$TEMP" "$LUMINE_HOME/electronUserData"
+      - name: Enable Git symlinks on Windows
+        if: runner.os == 'Windows'
+        run: git config --global core.symlinks true
       - uses: actions/checkout@v7
         with:
           path: jupyter-inspector
@@ -66,41 +92,42 @@ jobs:
           node-version-file: lumine/.nvmrc
           cache: npm
           cache-dependency-path: lumine/package-lock.json
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
       - name: Install Linux build and headless-display dependencies
+        if: runner.os == 'Linux'
         run: |
           # A third-party repository on the runner image answering 403 must not
           # fail the job: the lists this actually needs still fetched, and the
           # install below stays strict, so a missing package still stops us.
           sudo apt-get update || true
           sudo apt-get install -y xvfb libx11-dev libxkbfile-dev libsecret-1-dev
-      # The specs only touch pure library modules and the editor runtime, so the
-      # native `zeromq` binding is never loaded; skip install scripts.
+      # npm records the @lumine-code git forks with ssh URLs, but the runner has
+      # no ssh key, so rewrite them to anonymous HTTPS (the forks are public).
+      - name: Use HTTPS for GitHub git dependencies
+        run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
       - name: Install package dependencies
         working-directory: jupyter-inspector
         run: npm ci --ignore-scripts
-      # Mirrors the editor's own CI: install without scripts (patch-package and
-      # some native install scripts misbehave; native modules are rebuilt for
-      # Electron below), then reproduce the pieces that matter. npm records the
-      # @lumine-code git forks with ssh URLs, but the runner has no ssh key, so
-      # rewrite them to anonymous HTTPS (the forks are public). Serialized
-      # retries absorb flaky git-hosted fork downloads.
-      - name: Use HTTPS for GitHub git dependencies
-        run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
       - name: Install editor dependencies
         working-directory: lumine
         run: |
           install() { npm ci --ignore-scripts; }
           install || install || install
-      - name: Apply patches
-        working-directory: lumine
-        run: npx patch-package
       - name: Download the Electron binary
         working-directory: lumine
         run: node ./node_modules/electron/install.js
       - name: Rebuild native modules for Electron
         working-directory: lumine
         run: npm run build
-      - name: Run the Jasmine spec suite
+      - name: Run the Jasmine spec suite on Linux
+        if: runner.os == 'Linux'
         working-directory: lumine
         timeout-minutes: 20
         run: xvfb-run --auto-servernum npm start -- --test ../jupyter-inspector/spec
+      - name: Run the Jasmine spec suite on Windows and macOS
+        if: runner.os != 'Linux'
+        working-directory: lumine
+        timeout-minutes: 20
+        run: npm start -- --test ../jupyter-inspector/spec

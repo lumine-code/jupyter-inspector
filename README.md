@@ -35,7 +35,7 @@ Commands available in `.jupyter-inspector`:
 
 ## Usage
 
-The expression field is a real editor, so it gets the kernel's grammar and, with `autocomplete-plus` installed, its completions. Confirming it runs the lookup again; clearing it leaves the last result on screen.
+The expression field is a real editor, so it gets the kernel's grammar and, with `autocomplete` installed, its completions. Confirming it runs the lookup again; clearing it leaves the last result on screen.
 
 Introspecting from the editor does not move focus, so a lookup can be read without losing the place in the code.
 
