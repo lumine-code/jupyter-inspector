@@ -13,6 +13,8 @@ The kernel already knows what a name is bound to, what a function's signature lo
 - **Any kernel**: non-Python kernels are asked about the expression as written.
 - **Remembers per kernel**: every kernel keeps its last inspection and the panel swaps with the active editor's kernel; a kernel that goes away takes its result along.
 
+![Use jupyter-inspector with the running Python kernel.](.github/demo.png)
+
 ## Installation
 
 To install `jupyter-inspector` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/jupyter-inspector`.

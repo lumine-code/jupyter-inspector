@@ -1,0 +1,16 @@
+{
+  "title": "jupyter-inspector",
+  "description": "Use jupyter-inspector with the running Python kernel.",
+  "recordedOn": "2026-10-13",
+  "sourceRevision": "e25a53e4cd7d5c414a44ca7bf9826e10f97ee419",
+  "mode": "normal",
+  "fontSettings": "default",
+  "images": [
+    {
+      "file": "demo.png",
+      "label": "Use jupyter-inspector with the running Python kernel.",
+      "width": 1200,
+      "height": 760
+    }
+  ]
+}
