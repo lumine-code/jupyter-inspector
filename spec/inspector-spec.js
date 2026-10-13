@@ -507,7 +507,7 @@ describe("inspector pane", () => {
   // `pane.destroyItem`, and a pane only drops an item that tells it so.
   it("leaves no tab behind when destroyed directly", async () => {
     const pane = new InspectorPane(fakeSession(new InspectorStore(fakeKernel())), () => {});
-    const workspacePane = lumine.workspace.getCenter().getActivePane();
+    const workspacePane = lumine.workspace.getRightDock().getActivePane();
     workspacePane.addItem(pane);
     await settle();
     expect(workspacePane.getItems()).toContain(pane);
