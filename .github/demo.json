@@ -2,9 +2,10 @@
   "title": "jupyter-inspector",
   "description": "Use jupyter-inspector with the running Python kernel.",
   "recordedOn": "2026-10-13",
-  "sourceRevision": "e25a53e4cd7d5c414a44ca7bf9826e10f97ee419",
+  "sourceRevision": "f939e6c98dc13bb0e1749e5483d71e4eab1e85a7",
   "mode": "normal",
   "fontSettings": "default",
+  "themeSourceRevision": "6564a9e21899b5541e9c8f8006f9be6d6d72e6ad",
   "images": [
     {
       "file": "demo.png",
