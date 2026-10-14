@@ -4,11 +4,13 @@
       "label": "View",
       "submenu": [
         {
-          "label": "Open View",
+          "label": "Jupyter",
           "submenu": [
             {
-              "label": "Jupyter Inspector",
-              "command": "jupyter-inspector:toggle-focus"
+              "label": "Toggle Inspector Focus",
+              "command": "jupyter-inspector:toggle-focus",
+              "group": "reveal",
+              "order": 20
             }
           ]
         }
