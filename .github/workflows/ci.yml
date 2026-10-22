@@ -94,7 +94,7 @@ jobs:
           cache-dependency-path: lumine/package-lock.json
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15.1"
       - name: Install Linux build and headless-display dependencies
         if: runner.os == 'Linux'
         run: |
