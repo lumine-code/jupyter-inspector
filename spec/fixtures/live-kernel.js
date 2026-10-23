@@ -13,6 +13,7 @@ async function startLiveKernel(python) {
     throw new Error("Unexpected live-kernel directory; refusing cleanup");
   const env = { ...process.env };
   delete env.CI;
+  delete env.PYTHONSTARTUP;
   for (const key of ["JUPYTER_RUNTIME_DIR", "JUPYTER_CONFIG_DIR", "IPYTHONDIR", "TEMP", "TMP"])
     env[key] = root;
   const child = spawn(python, [path.join(__dirname, "live_kernel.py"), root], {

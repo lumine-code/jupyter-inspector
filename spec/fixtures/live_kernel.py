@@ -9,10 +9,10 @@ import time
 import traceback
 
 from jupyter_client import KernelManager
+from jupyter_client.kernelspec import KernelSpecManager
 
 
-def reply(client, message_id, timeout):
-    deadline = time.monotonic() + timeout
+def reply(client, message_id, deadline):
     while True:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -22,8 +22,7 @@ def reply(client, message_id, timeout):
             return message["content"]
 
 
-def outputs(client, message_id, timeout):
-    deadline = time.monotonic() + timeout
+def outputs(client, message_id, deadline):
     collected = []
     while True:
         remaining = deadline - time.monotonic()
@@ -41,10 +40,25 @@ def outputs(client, message_id, timeout):
 
 
 root = os.path.realpath(sys.argv[1])
-manager = KernelManager(connection_file=os.path.join(root, "connection.json"))
-manager.kernel_spec.argv = [
-    sys.executable, "-m", "ipykernel_launcher", "-f", "{connection_file}"
-]
+os.makedirs(os.path.join(root, "profile_live"))
+kernel_directory = os.path.join(root, "kernels")
+spec_directory = os.path.join(kernel_directory, "python3")
+os.makedirs(spec_directory)
+with open(os.path.join(spec_directory, "kernel.json"), "w", encoding="utf-8") as spec:
+    json.dump({
+        "argv": [
+            sys.executable, "-m", "ipykernel_launcher", "-f", "{connection_file}",
+            f"--IPKernelApp.ipython_dir={root}", "--IPKernelApp.profile=live",
+            "--HistoryManager.enabled=False",
+        ],
+        "display_name": "Owned live Python", "language": "python", "env": {},
+    }, spec)
+manager = KernelManager(
+    connection_file=os.path.join(root, "connection.json"),
+    kernel_spec_manager=KernelSpecManager(
+        kernel_dirs=[kernel_directory], ensure_native_kernel=False,
+    ),
+)
 client = None
 
 
@@ -64,17 +78,18 @@ try:
         response = {"id": request["id"]}
         try:
             timeout = max(1, (request.get("timeoutMs") or 30000) / 1000)
+            deadline = time.monotonic() + timeout
             if request["type"] == "execute":
                 message_id = client.execute(
                     request["code"], silent=True, store_history=False, allow_stdin=False
                 )
-                content = reply(client, message_id, timeout)
-                response.update(status=content["status"], outputs=outputs(client, message_id, timeout))
+                content = reply(client, message_id, deadline)
+                response.update(status=content["status"], outputs=outputs(client, message_id, deadline))
                 if content["status"] == "error":
                     response["error"] = content
             elif request["type"] == "inspect":
                 message_id = client.inspect(request["code"], cursor_pos=request["cursorPos"])
-                content = reply(client, message_id, timeout)
+                content = reply(client, message_id, deadline)
                 response.update(status=content["status"], data=content)
             else:
                 raise ValueError("Unsupported live-kernel request: " + request["type"])
