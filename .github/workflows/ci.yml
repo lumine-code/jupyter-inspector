@@ -66,6 +66,7 @@ jobs:
       LUMINE_JASMINE_REPORTER: list
       LUMINE_TEST_LIVE_PYTHON: "true"
       LUMINE_TEST_PYTHON: python
+      LUMINE_TEST_PYTHON_VERSION: "3.15.1"
       LUMINE_DISABLE_SHELLING_OUT_FOR_ENVIRONMENT: "true"
       LUMINE_HOME: ${{ github.workspace }}/jupyter-inspector-spec-home
       HOME: ${{ github.workspace }}/jupyter-inspector-spec-home
@@ -95,6 +96,9 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.15.1"
+      - name: Install the live notebook Python stack
+        run: |
+          python -m pip install --only-binary=:all: ipykernel==7.4.0 numpy==2.5.4 pandas==3.1.0 "pyarrow>=26,<27"
       - name: Install Linux build and headless-display dependencies
         if: runner.os == 'Linux'
         run: |
