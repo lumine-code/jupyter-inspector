@@ -2,6 +2,8 @@
 const etch = require("@lumine-code/etch");
 const { CompositeDisposable } = require("lumine");
 const outputRenderer = require("./output-renderer");
+const InputBudget = require("./input-budget");
+const { EXPRESSION_LIMIT } = require("./inspector-store");
 
 // The one representation the panel shows: the kernel's ANSI text/plain,
 // rendered in an ordinary div rather than a <pre>. UI themes style pre
@@ -68,6 +70,11 @@ class InspectorExpressionEditor {
     }
     this.element.appendChild(this.editor.element);
     this.props.watchEditor?.(this.editor);
+    this.inputBudget = new InputBudget(this.editor, this.element, {
+      limit: EXPRESSION_LIMIT,
+      label: "Expression",
+      value: this.props.value,
+    });
 
     this.disposables = new CompositeDisposable(
       this.editor.getBuffer().onDidChangeText(() => {
@@ -75,10 +82,19 @@ class InspectorExpressionEditor {
         // the emit would re-enter the parent's patch that is applying the very
         // change being echoed.
         if (this._settingText) return;
-        this.props.onChange(this.editor.getText());
+        this.inputBudget.validate();
+        if (this.props.onChangeSource)
+          this.props.onChangeSource(this.editor.getBuffer().getTextSnapshot());
+        else {
+          const text = this.inputBudget.read();
+          if (text !== undefined) this.props.onChange(text);
+        }
       }),
       lumine.commands.add(this.editor.element, {
-        "core:confirm": () => this.props.onConfirm(this.editor.getText()),
+        "core:confirm": () => {
+          const text = this.inputBudget.read();
+          if (text !== undefined) this.props.onConfirm(text);
+        },
         "core:cancel": (event) =>
           clearExpressionOrAbortMultiCursor(this.editor, this.props.onChange, event),
         "jupyter-inspector:focus-body": {
@@ -99,15 +115,13 @@ class InspectorExpressionEditor {
 
   update(props) {
     const previousGrammar = this.props.grammar;
+    const previousOwner = this.props.owner;
     this.props = props;
-
-    if (this.editor && this.editor.getText() !== props.value) {
-      this._settingText = true;
-      try {
-        this.editor.setText(props.value || "");
-      } finally {
-        this._settingText = false;
-      }
+    this._settingText = true;
+    try {
+      this.inputBudget.sync(props.value, { force: props.owner !== previousOwner });
+    } finally {
+      this._settingText = false;
     }
     const scopeName = props.grammar?.scopeName;
     if (this.editor && scopeName && scopeName !== previousGrammar?.scopeName) {
@@ -118,6 +132,7 @@ class InspectorExpressionEditor {
 
   destroy() {
     this.disposables.dispose();
+    this.inputBudget.dispose();
     this.editor?.destroy();
     return etch.destroy(this);
   }
@@ -209,7 +224,9 @@ class Inspector {
         <div className="inspector-controls">
           <InspectorExpressionEditor
             ref="expression"
-            value={store.expression}
+            value={store.expressionSource ?? store.expression}
+            owner={store}
+            onChangeSource={store.setExpressionSource}
             onChange={store.setExpression}
             onConfirm={store.loadExpression}
             grammar={store.kernel && store.kernel.grammar}

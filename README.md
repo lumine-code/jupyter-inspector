@@ -66,6 +66,8 @@ Paste this into your `styles.css` to give the result more room to breathe:
 
 - `background-tips.provider`: provided to teach the package's headline action in an empty workspace.
 
+Expressions are limited to 65536 UTF-16 units before extraction or kernel requests. Complete drafts remain attached to their kernel, including while another kernel is active or the panel is reopened. Oversized drafts disable inspection and refresh, cancel pending requests, and recover after shortening. Inspection text assembly and temporary-name substitution have a 4 Mi UTF-16 presentation budget and a 100000-fragment limit; exceeding either displays an error without constructing an oversized string.
+
 ## Contributing
 
 Got ideas to make this package better, found a bug, or want to help add new features? Just drop your thoughts on GitHub. Any feedback is welcome!
