@@ -96,6 +96,23 @@ describe("Inspector source-backed input budget", () => {
     expect(target.requests[1].specification.code).toBe("current");
   });
 
+  it("does not replace the whole input during a source-backed keystroke echo", () => {
+    const store = storeFor(kernel());
+    store.setExpression("hello");
+    const editor = mount({ value: store });
+    const change = jasmine.createSpy("buffer change");
+    const subscription = editor.getBuffer().onWillChange(change);
+    editor.setCursorBufferPosition([0, 2]);
+    editor.insertText("X");
+    etch.updateSync(panel);
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(editor.getCursorBufferPosition().serialize()).toEqual([0, 3]);
+    editor.undo();
+    etch.updateSync(panel);
+    expect(editor.getText()).toBe("hello");
+    subscription.dispose();
+  });
+
   it("retains independent complete drafts across kernel switches and panel recreation", async () => {
     const first = storeFor(kernel()),
       second = storeFor(kernel()),
