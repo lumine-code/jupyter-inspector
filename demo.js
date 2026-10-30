@@ -53,7 +53,11 @@ module.exports = {
         }
       },
       ready() {
-        return Boolean(document.querySelector(".jupyter-inspector")?.innerText.includes("ndarray"));
+        return Boolean(
+          document
+            .querySelector(".jupyter-inspector")
+            ?.innerText.includes("Built-in mutable sequence"),
+        );
       },
     },
   ],
