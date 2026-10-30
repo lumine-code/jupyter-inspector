@@ -1,5 +1,4 @@
 .jupyter-inspector {
-  padding: var(--ui-spacing);
   overflow: hidden;
   outline: none;
   display: flex;
@@ -19,7 +18,8 @@
     display: flex;
     gap: 4px;
     align-items: flex-start;
-    padding-bottom: 6px;
+    padding: var(--ui-spacing) var(--ui-spacing) 6px;
+    border-bottom: 1px solid var(--base-border-color);
 
     .inspector-expression-editor {
       flex: 1 1 auto;
@@ -38,8 +38,13 @@
   .inspector-body {
     flex: 1 1 auto;
     min-height: 0;
+    padding: 0 var(--ui-spacing) var(--ui-spacing);
     overflow-y: auto;
     outline: none;
+
+    &:only-child {
+      padding-top: var(--ui-spacing);
+    }
   }
 
   .inspector-message {
