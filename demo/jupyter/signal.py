@@ -1,5 +1,5 @@
 #:: lumine-demo
-# Inspect a real built-in sequence without a tool-installation file path.
+# Inspect a sequence of signal samples.
 
 samples = [0.2, 0.8, -0.4, 0.5, 1.0]
 mean = sum(samples) / len(samples)
