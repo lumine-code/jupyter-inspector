@@ -209,7 +209,12 @@ class Inspector {
       // panel included — not the small in-flow note used between results.
       return (
         <div className="inspector-panel">
-          <div className="inspector-body" ref="body" tabIndex={0}>
+          <div
+            className="inspector-body"
+            ref="body"
+            tabIndex={0}
+            attributes={{ "data-scrollbar": "auto" }}
+          >
             <background-tips>
               <ul className="centered background-message">
                 <li>No kernel running</li>
@@ -234,7 +239,12 @@ class Inspector {
             watchEditor={this.watchEditor}
           />
         </div>
-        <div className="inspector-body" ref="body" tabIndex={0}>
+        <div
+          className="inspector-body"
+          ref="body"
+          tabIndex={0}
+          attributes={{ "data-scrollbar": "auto" }}
+        >
           {this.renderResult(store)}
         </div>
       </div>
