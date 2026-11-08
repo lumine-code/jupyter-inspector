@@ -188,7 +188,13 @@ class Inspector {
     }
 
     if (store.text == null) {
-      return renderMessage("No inspection loaded.");
+      return (
+        <background-tips>
+          <ul className="centered background-message">
+            <li>No inspection loaded.</li>
+          </ul>
+        </background-tips>
+      );
     }
 
     return (
@@ -210,7 +216,7 @@ class Inspector {
       return (
         <div className="inspector-panel">
           <div
-            className="inspector-body"
+            className="inspector-body panel-empty-state"
             ref="body"
             tabIndex={0}
             attributes={{ "data-scrollbar": "auto" }}
@@ -240,7 +246,7 @@ class Inspector {
           />
         </div>
         <div
-          className="inspector-body"
+          className={`inspector-body${!store.loading && !store.error && store.text == null ? " panel-empty-state" : ""}`}
           ref="body"
           tabIndex={0}
           attributes={{ "data-scrollbar": "auto" }}

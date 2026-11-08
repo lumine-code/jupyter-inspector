@@ -460,9 +460,31 @@ describe("inspector panel", () => {
     component = null;
   });
   it("says nothing is loaded before anything is", async () => {
-    expect(component.element.querySelector(".inspector-message").textContent).toContain(
+    expect(component.element.querySelector(".panel-empty-state").textContent).toContain(
       "No inspection loaded",
     );
+  });
+  it("confines the empty state to the result body and removes it for loading, errors and results", () => {
+    const empty = () => component.element.querySelector(".panel-empty-state");
+    expect(empty().contains(component.element.querySelector(".inspector-controls"))).toBeFalse();
+    store.loading = true;
+    flush(component);
+    expect(empty()).toBeNull();
+    expect(component.element.querySelector(".inspector-message").textContent).toBe("Loading...");
+    store.loading = false;
+    store.setError("Inspection failed");
+    flush(component);
+    expect(empty()).toBeNull();
+    expect(component.element.querySelector(".text-error").textContent).toBe("Inspection failed");
+    store.setText("Signature: function()");
+    flush(component);
+    expect(empty()).toBeNull();
+    expect(component.element.querySelector(".inspector-result").textContent).toContain(
+      "Signature:",
+    );
+    store.text = null;
+    flush(component);
+    expect(empty().textContent).toBe("No inspection loaded.");
   });
   it("offers an expression editor", async () => {
     expect(component.element.querySelector("lumine-text-editor.inspector-expression")).toBeTruthy();
