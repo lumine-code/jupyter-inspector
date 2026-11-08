@@ -70,7 +70,6 @@ jobs:
       LUMINE_DISABLE_SHELLING_OUT_FOR_ENVIRONMENT: "true"
       LUMINE_HOME: ${{ github.workspace }}/jupyter-inspector-spec-home
       HOME: ${{ github.workspace }}/jupyter-inspector-spec-home
-      USERPROFILE: ${{ github.workspace }}/jupyter-inspector-spec-home
       XDG_CONFIG_HOME: ${{ github.workspace }}/jupyter-inspector-spec-home
       TEMP: ${{ github.workspace }}/jupyter-inspector-spec-tmp
       TMP: ${{ github.workspace }}/jupyter-inspector-spec-tmp
@@ -139,9 +138,13 @@ jobs:
         if: runner.os == 'Linux'
         working-directory: lumine
         timeout-minutes: 20
+        env:
+          USERPROFILE: ${{ github.workspace }}/jupyter-inspector-spec-home
         run: xvfb-run --auto-servernum npm start -- --test ../jupyter-inspector/spec
       - name: Run the Jasmine spec suite on Windows and macOS
         if: runner.os != 'Linux'
         working-directory: lumine
         timeout-minutes: 20
+        env:
+          USERPROFILE: ${{ github.workspace }}/jupyter-inspector-spec-home
         run: npm start -- --test ../jupyter-inspector/spec
