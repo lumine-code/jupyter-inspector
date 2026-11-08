@@ -93,6 +93,14 @@ jobs:
           node-version-file: lumine/.nvmrc
           cache: npm
           cache-dependency-path: lumine/package-lock.json
+      - name: Check the official Python transport bootstrap
+        working-directory: jupyter-inspector
+        run: node --test script/prepare-python.test.js
+      - name: Prepare the exact official Python tool cache
+        working-directory: jupyter-inspector
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node script/prepare-python.js
       - uses: actions/setup-python@v7
         with:
           python-version: "3.15.1"
