@@ -14,6 +14,8 @@ const {
   selectAsset,
   downloadArchive,
   removeOwnedStaging,
+  WINDOWS_BOOTSTRAP_COMMAND,
+  reportWindowsInstallerFailure,
   preparePython,
 } = require("./prepare-python");
 
@@ -467,14 +469,24 @@ for (const platform of ["win32", "linux", "darwin"]) {
       },
       run(command, args, options) {
         if (command === cache.binary) return VERSION;
-        if (args.includes("./setup.sh") || args.includes("./setup.ps1")) {
+        if (args.includes("./setup.sh") || args.includes(WINDOWS_BOOTSTRAP_COMMAND)) {
           calls.push("install");
           assert.equal(command, platform === "win32" ? "powershell" : "bash");
-          assert.deepEqual(args, [platform === "win32" ? "./setup.ps1" : "./setup.sh"]);
+          assert.deepEqual(
+            args,
+            platform === "win32" ? ["-Command", WINDOWS_BOOTSTRAP_COMMAND] : ["./setup.sh"],
+          );
           assert.ok(options.cwd.startsWith(cache.temp + path.sep));
           assert.equal(options.env.RUNNER_TOOL_CACHE, cache.env.RUNNER_TOOL_CACHE);
           if (platform === "linux")
             assert.equal(options.env.LD_LIBRARY_PATH, path.join(options.cwd, "lib"));
+          if (platform === "win32") {
+            const temporary = path.join(path.dirname(options.cwd), "installer-temp");
+            assert.equal(options.env.TEMP, temporary);
+            assert.equal(options.env.TMP, temporary);
+            assert.equal(options.env.TMPDIR, temporary);
+            assert.deepEqual(fs.readdirSync(temporary), []);
+          }
           cache.populate();
         } else {
           calls.push("extract");
@@ -544,7 +556,7 @@ test("download and original-installer failures clean only the owned staging dire
           fs.writeFileSync(archive, "verified fixture");
         },
         run(command, args) {
-          if (args.includes("./setup.ps1")) throw new Error("install failed");
+          if (args.includes(WINDOWS_BOOTSTRAP_COMMAND)) throw new Error("install failed");
         },
       }),
       new RegExp(`${failure} failed`),
@@ -553,4 +565,95 @@ test("download and original-installer failures clean only the owned staging dire
     assert.equal(fs.readFileSync(sentinel, "utf8"), "preserve me");
     assert.equal(fs.existsSync(`${cache.target}.complete`), false);
   }
+});
+
+test("Windows installer failures retain their error and report only owned redacted Python diagnostics", async (t) => {
+  const cache = runner(t, "win32");
+  cache.env.GITHUB_TOKEN = "fixture-github-token-never-print";
+  cache.env.SERVICE_PASSWORD = "fixture-password-never-print";
+  const messages = [];
+  const failure = new Error("original installer failed");
+  let installations = 0;
+  await assert.rejects(
+    preparePython({
+      env: cache.env,
+      platform: "win32",
+      arch: "x64",
+      report: (message) => messages.push(message),
+      download(selected, archive) {
+        fs.writeFileSync(archive, "verified fixture");
+      },
+      run(command, args, options) {
+        if (!args.includes(WINDOWS_BOOTSTRAP_COMMAND) && !args.includes("./setup.ps1")) return;
+        installations++;
+        const temporary = path.join(path.dirname(options.cwd), "installer-temp");
+        fs.mkdirSync(temporary, { recursive: true });
+        fs.writeFileSync(
+          path.join(temporary, "Python_3.15.1_(64-bit)_fixture.log"),
+          `Detect complete\nRelated bundle found\nError 0x80070666: newer version ${cache.env.GITHUB_TOKEN}\n${cache.env.SERVICE_PASSWORD}\nApply complete\n`,
+        );
+        fs.writeFileSync(path.join(temporary, "unrelated.log"), "Error: unrelated private output");
+        fs.writeFileSync(
+          path.join(temporary, "Python_3.15.1_utf16.log"),
+          "\ufeffMSI failed: Return value 3\n",
+          "utf16le",
+        );
+        throw failure;
+      },
+    }),
+    (error) => error === failure,
+  );
+  assert.equal(installations, 1);
+  assert.ok(messages.some((message) => message.includes("Error 0x80070666")));
+  assert.ok(messages.some((message) => message.includes("Return value 3")));
+  assert.ok(messages.some((message) => message.includes("[REDACTED]")));
+  assert.ok(messages.every((message) => !message.includes(cache.env.GITHUB_TOKEN)));
+  assert.ok(messages.every((message) => !message.includes(cache.env.SERVICE_PASSWORD)));
+  assert.ok(messages.every((message) => !message.includes("unrelated private output")));
+  assert.deepEqual(fs.readdirSync(cache.temp), []);
+  assert.equal(fs.existsSync(`${cache.target}.complete`), false);
+});
+
+test("installer diagnostics are bounded and do not read linked files or an unsafe directory", (t) => {
+  const root = fixture(t);
+  const directory = path.join(root, "logs");
+  fs.mkdirSync(directory);
+  const unrelated = path.join(root, "unrelated.log");
+  fs.writeFileSync(unrelated, "Error: unrelated sentinel");
+  fs.symlinkSync(unrelated, path.join(directory, "Python_3.15.1_link.log"));
+  fs.writeFileSync(
+    path.join(directory, "Python_3.15.1_large.log"),
+    "Error: " + "x".repeat(3000) + "\n" + "Error: shorter diagnostic\n".repeat(200),
+  );
+  const messages = [];
+  reportWindowsInstallerFailure(directory, {}, (message) => messages.push(message));
+  assert.equal(messages.length, 100);
+  assert.ok(messages.every((message) => message.length <= 2048));
+  assert.ok(messages.every((message) => !message.includes("unrelated sentinel")));
+  const link = path.join(root, "linked-directory");
+  fs.symlinkSync(directory, link, process.platform === "win32" ? "junction" : "dir");
+  const rejected = [];
+  reportWindowsInstallerFailure(link, {}, (message) => rejected.push(message));
+  assert.deepEqual(rejected, ["Python installer diagnostics unavailable"]);
+});
+
+test("Windows bootstrap reports the actual native exit code without executing an installer", (t) => {
+  if (process.platform !== "win32") return;
+  const root = fixture(t);
+  fs.writeFileSync(
+    path.join(root, "setup.ps1"),
+    '& $env:ComSpec /c "exit 1638"\nif ($LASTEXITCODE -ne 0) { throw "original fixture failure" }\n',
+  );
+  const env = { ...process.env };
+  delete env.CI;
+  const result = spawnSync("powershell", ["-Command", WINDOWS_BOOTSTRAP_COMMAND], {
+    cwd: root,
+    env,
+    windowsHide: true,
+    encoding: "utf8",
+  });
+  assert.ifError(result.error);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Official Python native installer exit code: 1638/);
+  assert.match(result.stderr, /original fixture failure/);
 });

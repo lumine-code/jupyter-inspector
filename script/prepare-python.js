@@ -190,6 +190,73 @@ function removeOwnedStaging(owned, tempRoot) {
   fs.rmSync(realOwned, { recursive: true, force: true });
 }
 
+const WINDOWS_BOOTSTRAP_COMMAND =
+  "try { & './setup.ps1' } catch { [Console]::Error.WriteLine(('Official Python native installer exit code: {0}' -f $LASTEXITCODE)); throw }";
+
+function reportWindowsInstallerFailure(directory, env, report) {
+  const secrets = Object.entries(env)
+    .filter(
+      ([name, value]) =>
+        /TOKEN|PASSWORD|SECRET|CREDENTIAL|PRIVATE_KEY|ACCESS_KEY|AUTH/i.test(name) && value,
+    )
+    .map(([, value]) => String(value))
+    .sort((a, b) => b.length - a.length);
+  const redact = (text) => {
+    for (const secret of secrets) text = text.replaceAll(secret, "[REDACTED]");
+    return text;
+  };
+  try {
+    if (fs.lstatSync(directory).isSymbolicLink() || fs.realpathSync(directory) !== directory)
+      throw new Error("Unsafe installer diagnostic directory");
+    let remaining = 100;
+    const filenames = fs
+      .readdirSync(directory)
+      .filter((name) => /^Python[ _]3\.15\.1[ _].*\.log$/i.test(name))
+      .sort()
+      .slice(0, 20);
+    for (const filename of filenames) {
+      const file = path.join(directory, filename);
+      const stat = fs.lstatSync(file);
+      if (!stat.isFile() || stat.isSymbolicLink()) continue;
+      const descriptor = fs.openSync(file, "r");
+      let text;
+      try {
+        const header = Buffer.alloc(2);
+        fs.readSync(descriptor, header, 0, header.length, 0);
+        const bytes = Buffer.alloc(Math.min(stat.size, 256 * 1024));
+        fs.readSync(descriptor, bytes, 0, bytes.length, Math.max(0, stat.size - bytes.length));
+        text = bytes.toString(header[0] === 0xff && header[1] === 0xfe ? "utf16le" : "utf8");
+      } finally {
+        fs.closeSync(descriptor);
+      }
+      const lines = text.split(/\r?\n/);
+      const selected = new Set();
+      for (let index = 0; index < lines.length; index++) {
+        if (
+          !/error|fail|return value 3|exit code|related bundle|downgrade|newer version|apply complete/i.test(
+            lines[index],
+          )
+        )
+          continue;
+        for (
+          let context = Math.max(0, index - 2);
+          context <= Math.min(lines.length - 1, index + 2);
+          context++
+        )
+          selected.add(context);
+      }
+      for (const index of selected) {
+        if (remaining-- <= 0) return;
+        report(redact(`Python installer diagnostic (${filename}): ${lines[index]}`).slice(0, 2048));
+      }
+    }
+  } catch {
+    // Diagnostics must never replace the original install failure or inspect
+    // unrelated runner files when the owned directory is no longer safe.
+    report("Python installer diagnostics unavailable");
+  }
+}
+
 async function preparePython({
   env = process.env,
   platform = process.platform,
@@ -199,6 +266,7 @@ async function preparePython({
   fetch = globalThis.fetch,
   signal,
   osRelease,
+  report = console.error,
 } = {}) {
   if (env.GITHUB_ACTIONS !== "true")
     throw new Error("The original Python bootstrap may only run on a GitHub Actions runner");
@@ -248,17 +316,30 @@ async function preparePython({
     // Match the original setup-python install boundary. The official scripts
     // own relocation, pip bootstrap, Windows registry work and .complete markers.
     signal?.throwIfAborted();
-    run(
-      platform === "win32" ? "powershell" : "bash",
-      [platform === "win32" ? "./setup.ps1" : "./setup.sh"],
-      {
-        cwd: payload,
-        env: {
-          ...env,
-          ...(platform === "linux" && { LD_LIBRARY_PATH: path.join(payload, "lib") }),
+    const installerTemp = path.join(owned, "installer-temp");
+    if (platform === "win32") fs.mkdirSync(installerTemp);
+    try {
+      run(
+        platform === "win32" ? "powershell" : "bash",
+        platform === "win32" ? ["-Command", WINDOWS_BOOTSTRAP_COMMAND] : ["./setup.sh"],
+        {
+          cwd: payload,
+          env: {
+            ...env,
+            ...(platform === "linux" && { LD_LIBRARY_PATH: path.join(payload, "lib") }),
+            // A fresh owned TEMP limits failure diagnostics to this invocation.
+            ...(platform === "win32" && {
+              TEMP: installerTemp,
+              TMP: installerTemp,
+              TMPDIR: installerTemp,
+            }),
+          },
         },
-      },
-    );
+      );
+    } catch (error) {
+      if (platform === "win32") reportWindowsInstallerFailure(installerTemp, env, report);
+      throw error;
+    }
     if (!cacheReady(target, platform, env, run))
       throw new Error("The original installer did not produce a complete Python 3.15.1 cache");
     return { cached: false, target, asset: asset.filename };
@@ -275,6 +356,8 @@ module.exports = {
   downloadArchive,
   cacheReady,
   removeOwnedStaging,
+  WINDOWS_BOOTSTRAP_COMMAND,
+  reportWindowsInstallerFailure,
   preparePython,
 };
 if (require.main === module) {
