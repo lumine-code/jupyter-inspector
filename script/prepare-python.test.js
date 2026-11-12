@@ -68,8 +68,8 @@ function transport(initial, metadata, apiFirst = false) {
 }
 
 test("pinned distributions retain the requested release and official checksums", () => {
-  assert.equal(VERSION, "3.15.1");
-  assert.equal(RELEASE, "3.15.1-39619321210");
+  assert.equal(VERSION, "3.15.2");
+  assert.equal(RELEASE, "3.15.2-40340363276");
   assert.equal(Object.keys(CHECKSUMS).length, 11);
   for (const [target, digest] of Object.entries(CHECKSUMS)) {
     assert.match(digest, /^[a-f0-9]{64}$/);
@@ -653,12 +653,12 @@ test("Windows installer failures retain their error and report only owned redact
         const temporary = path.join(path.dirname(options.cwd), "installer-temp");
         fs.mkdirSync(temporary, { recursive: true });
         fs.writeFileSync(
-          path.join(temporary, "Python_3.15.1_(64-bit)_fixture.log"),
+          path.join(temporary, "Python_3.15.2_(64-bit)_fixture.log"),
           `Detect complete\nRelated bundle found\nError 0x80070666: newer version ${cache.env.GITHUB_TOKEN}\n${cache.env.SERVICE_PASSWORD}\nApply complete\n`,
         );
         fs.writeFileSync(path.join(temporary, "unrelated.log"), "Error: unrelated private output");
         fs.writeFileSync(
-          path.join(temporary, "Python_3.15.1_utf16.log"),
+          path.join(temporary, "Python_3.15.2_utf16.log"),
           "\ufeffMSI failed: Return value 3\n",
           "utf16le",
         );
@@ -684,9 +684,9 @@ test("installer diagnostics are bounded and do not read linked files or an unsaf
   fs.mkdirSync(directory);
   const unrelated = path.join(root, "unrelated.log");
   fs.writeFileSync(unrelated, "Error: unrelated sentinel");
-  fs.symlinkSync(unrelated, path.join(directory, "Python_3.15.1_link.log"));
+  fs.symlinkSync(unrelated, path.join(directory, "Python_3.15.2_link.log"));
   fs.writeFileSync(
-    path.join(directory, "Python_3.15.1_large.log"),
+    path.join(directory, "Python_3.15.2_large.log"),
     "Error: " + "x".repeat(3000) + "\n" + "Error: shorter diagnostic\n".repeat(200),
   );
   const messages = [];
